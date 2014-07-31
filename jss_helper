@@ -99,7 +99,7 @@ def batch_scope(j, args):
     for policy_query in args.policies:
         policy = j.Policy(int(policy_query))
         policy.add_object_to_scope(group)
-        policy.update()
+        policy.save()
         print("%s: Success." % policy.name)
 
 
@@ -163,7 +163,7 @@ def promote(j, args):
         name = policy_name_element.text
         name = name.replace(old_version, new_version)
         policy_name_element.text = name
-    policy.update()
+    policy.save()
 
 
 def get_md_configp_diff(j, args):
@@ -200,7 +200,7 @@ def create_subparser(parser, name, help, func, **kwargs):
 def main():
     """Run as a cli command."""
     jss_prefs = JSSPrefs()
-    j = JSS(jss_prefs)
+    j = JSS(jss_prefs=jss_prefs)
 
     # Create our argument parser
     parser = argparse.ArgumentParser(description="Query the JSS.")
