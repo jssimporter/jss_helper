@@ -21,11 +21,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import argparse
+from distutils.version import StrictVersion
 import re
 import subprocess
 import sys
 
 from jss import *
+
+
+REQUIRED_PYTHON_JSS_VERSION = StrictVersion('0.3.4')
 
 
 def print_object(objs):
@@ -199,6 +203,17 @@ def create_subparser(parser, name, help, func, **kwargs):
 
 def main():
     """Run as a cli command."""
+
+    # Ensure we have the right version of python-jss
+    if jss.__dict__.get("get_version"):
+        python_jss_version = StrictVersion(jss.get_version())
+    else:
+        python_jss_version = StrictVersion('0.0')
+    if python_jss_version < REQUIRED_PYTHON_JSS_VERSION:
+        self.output("Requires python-jss version: %s. Installed: %s" %
+                    (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
+        sys.exit()
+
     jss_prefs = JSSPrefs()
     j = JSS(jss_prefs=jss_prefs)
 
