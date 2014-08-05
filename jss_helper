@@ -210,7 +210,7 @@ def main():
     else:
         python_jss_version = StrictVersion('0.0')
     if python_jss_version < REQUIRED_PYTHON_JSS_VERSION:
-        self.output("Requires python-jss version: %s. Installed: %s" %
+        print("Requires python-jss version: %s. Installed: %s" %
                     (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
         sys.exit()
 
@@ -235,6 +235,10 @@ def main():
                               'func': create_func(j.ComputerGroup),
                               'kwargs': {'--id': 'ID of computer group to '
                                          'retrieve.'}}
+    subparsers['package'] = {'help': "Get a list of all packages' names and "
+                            "IDs, or the package XML.",
+                              'func': create_func(j.Package),
+                              'kwargs': {'--id': 'ID of policy to retrieve.',}}
     subparsers['policy'] = {'help': "Get a list of all policies' names and "
                             "IDs, or the policy XML.",
                               'func': create_func(j.Policy),
@@ -301,7 +305,7 @@ def main():
 
     # Promote
     help = "Promote a package from development to production by updating an" \
-            "existing production policy with a newer package."
+            " existing production policy with a newer package."
     promote_subparser = subparser.add_parser('promote', help=help)
     promote_subparser.add_argument('old_package', help='Package name or ID.')
     promote_subparser.add_argument('new_package', help='Package name or ID.')
