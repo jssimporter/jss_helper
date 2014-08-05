@@ -165,7 +165,9 @@ def promote(j, args):
         new_version = re.search(r'([0-9.]*[0-9]+)\.pkg$', new_package.name).group(1)
         print(old_version, new_version)
         name = policy_name_element.text
+        print("Old name: %s" % name)
         name = name.replace(old_version, new_version)
+        print("New name: %s" % name)
         policy_name_element.text = name
     policy.save()
 
