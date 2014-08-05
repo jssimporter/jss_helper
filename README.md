@@ -78,6 +78,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -v                    Verbose output.
+  --ssl                 Use SSL verification
 ```
 
 Many of these verbs, the "positional arguments", have sub-options. You can view them by doing a -h on them; e.g. ```jss_helper group -h```.
@@ -126,3 +127,4 @@ Issues, Upcoming Features
   - Need to add ability to use name OR ID for all verbs. Currently inconsistent
   - promotion policy renaming is limited to my organization.
   - ```policy_by_group``` can't search for "all computers". (Will add soon!)
+  - Installer package!
