@@ -222,6 +222,8 @@ def main():
     # Create our argument parser
     parser = argparse.ArgumentParser(description="Query the JSS.")
     parser.add_argument('-v', action='store_true', help="Verbose output.")
+    parser.add_argument('--ssl', default=False, action='store_true',
+                        help="Use SSL verification")
     subparser = parser.add_subparsers(dest='subparser_name')
 
     subparsers = {}
@@ -282,9 +284,9 @@ def main():
                                         'func': get_md_configp_group,
                                         'kwargs': {'group': 'Group name to '
                                                    'query.'}}
-    subparsers['md_configp_diff'] = {'help': "Lists the differnces between"
-                                         "all mobile configuration profiles"
-                                         "scoped to the provided groups.",
+    subparsers['md_configp_diff'] = {'help': "Lists the differences between"
+                                         " all mobile configuration profiles"
+                                         " scoped to the provided groups.",
                                         'func': get_md_configp_diff,
                                         'kwargs': {'group1': 'Group name to '\
                                                    'query.', 'group2':
@@ -321,6 +323,8 @@ def main():
     args = parser.parse_args()
     if args.v:
         j.verbose = True
+    # Until I add a toggle method...
+    j.session.verify = args.ssl
 
     args.func(j, args)
 
