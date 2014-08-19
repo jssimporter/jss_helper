@@ -27,6 +27,10 @@ import subprocess
 import sys
 
 from jss import *
+try:
+    from jss import __version__
+except ImportError:
+    __version__ = '0.0.0'
 
 
 REQUIRED_PYTHON_JSS_VERSION = StrictVersion('0.3.4')
@@ -207,10 +211,7 @@ def main():
     """Run as a cli command."""
 
     # Ensure we have the right version of python-jss
-    if jss.__dict__.get("get_version"):
-        python_jss_version = StrictVersion(jss.get_version())
-    else:
-        python_jss_version = StrictVersion('0.0')
+    python_jss_version = StrictVersion(__version__)
     if python_jss_version < REQUIRED_PYTHON_JSS_VERSION:
         print("Requires python-jss version: %s. Installed: %s" %
                     (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
