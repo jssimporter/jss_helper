@@ -67,7 +67,7 @@ def get_group_policies(j, args):
     policies = j.Policy()
     group = j.ComputerGroup(args.group)
     results = find_object_in_containers(group, search, policies)
-    output = build_results_string('Policies', args.group, results)
+    output = build_results_string('Policies', group.name, results)
     print output
 
 
@@ -77,7 +77,7 @@ def get_package_policies(j, args):
     policies = j.Policy()
     package = j.Package(args.package)
     results = find_object_in_containers(package, search, policies)
-    output = build_results_string('Policies', args.package, results)
+    output = build_results_string('Policies', package.name, results)
     print output
 
 
@@ -117,13 +117,14 @@ def build_results_string(type, search, results):
     Returns:
         Formatted report string.
     """
-    # Integer division!
-    width = max([int(len(result[0])) for result in results])
-
     s = "%s with %s:\n" % (type, search)
-    for i in results:
-        # TODO(Shea): Fix string building.
-        s += "ID: {:>{width}}\tNAME: {}\n".format(i[0], i[1], width=width)
+    if results:
+        width = max([int(len(result[0])) for result in results])
+        for i in results:
+            # TODO(Shea): Fix string building.
+            s += "ID: {:>{width}}\tNAME: {}\n".format(i[0], i[1], width=width)
+    else:
+        s += "No results found."
     return s
 
 
