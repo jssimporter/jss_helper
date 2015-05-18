@@ -66,35 +66,58 @@ def get_group_policies(j, args):
     search = 'scope/computer_groups/computer_group'
     policies = j.Policy()
     group = j.ComputerGroup(args.group)
-    results = get_objects_by_scoped_group(policies, search, group)
-
-    output = build_scope_results('Policies', args.group, results)
+    results = find_object_in_containers(group, search, policies)
+    output = build_results_string('Policies', args.group, results)
     print(output)
 
 
-def get_objects_by_scoped_group(objs, search, group):
-    """Get all objects scoped to Group object group.
+def get_package_policies(j, args):
+    """Find all policies which install a package."""
+    search = 'package_configuration/packages/package'
+    policies = j.Policy()
+    package = j.Package(args.package)
+    results = find_object_in_containers(package, search, policies)
+    output = build_results_string('Policies', args.package, results)
+    print(output)
 
-    objs:   A list of objects to check.
-    search: an xpath string to the list container for that scoping type.
-    group: A Group object to search by.
 
-    Returns a list of results.
+def find_object_in_containers(search_object, search_path, containers):
+    """Get all container objects which contain a reference to an object.
 
+    JSS Objects often reference other objects: e.g. Policies have
+    scoping groups and packages. This function will search within a
+    container-type JSS Object for a reference to another object.
+
+    Args:
+        search_object: A JSSObject to search for in objs.
+        search_path: A xpath String to the list container to check for
+            search object.
+        containers: List of JSSObjects to check.
+
+    Returns: A list of objects which match.
     """
     results = []
-    full_objects = objs.retrieve_all()
+    full_objects = containers.retrieve_all()
     for obj in full_objects:
-        for scope_group in obj.findall(search):
-            if scope_group.findtext('id') == group.id or \
-                    scope_group.findtext('name') == group.name:
+        for element in obj.findall(search_path):
+            if (element.findtext('id') == search_object.id or
+                element.findtext('name') == search_object.name):
                 results.append((obj.id, obj.name))
     return results
 
 
-def build_scope_results(type, group, results):
-    """Print a list of results for type."""
-    s = "%s in scope for %s:\n" % (type, group)
+def build_results_string(type, search, results):
+    """Format a list of results for output reporting.
+
+    Args:
+        type: String name of type to use as a header.
+        search: String name of the object matched.
+        results: An iterable of match tuples, of (int ID, str name).
+
+    Returns:
+        Formatted report string.
+    """
+    s = "%s with %s:\n" % (type, search)
     for i in results:
         s += "ID: %s\t\tNAME: %s\n" % (i[0], i[1])
     return s
@@ -118,7 +141,7 @@ def get_md_configp_group(j, args):
     group = j.MobileDeviceGroup(args.group)
     results = get_objects_by_scoped_group(configps, search, group)
 
-    output = build_scope_results('Profiles', args.group, results)
+    output = build_results_string('Profiles', args.group, results)
     print(output)
 
 
@@ -134,11 +157,11 @@ def get_group_policy_diff(j, args):
     # I tried to do this with the tempfile module, but the files always ended
     # up being size 0 and dissappearing, despite delete=False.
     with open('/tmp/file1', mode='w') as f1:
-        output = build_scope_results("Policies", args.group1, results1)
+        output = build_results_string("Policies", args.group1, results1)
         f1.write(output)
         file1 = f1.name
     with open('/tmp/file2', mode='w') as f2:
-        output = build_scope_results("Policies", args.group2, results2)
+        output = build_results_string("Policies", args.group2, results2)
         f2.write(output)
         file2 = f2.name
 
@@ -150,7 +173,6 @@ def promote(j, args):
 
     Designed with the intention of facilitating promotion from development
     to production of a package.
-
     """
     old_package = j.Package(args.old_package)
     new_package = j.Package(args.new_package)
@@ -165,8 +187,10 @@ def promote(j, args):
     # include the version number, so this works for me.
     if args.update_version_in_name:
         policy_name_element = policy.find('general/name')
-        old_version = re.search(r'[\s\-]([0-9.]+)$', policy_name_element.text).group(1)
-        new_version = re.search(r'([0-9.]*[0-9]+)\.pkg$', new_package.name).group(1)
+        old_version = re.search(r'[\s\-]([0-9.]+)$',
+                                policy_name_element.text).group(1)
+        new_version = re.search(r'([0-9.]*[0-9]+)\.pkg$',
+                                new_package.name).group(1)
         print(old_version, new_version)
         name = policy_name_element.text
         print("Old name: %s" % name)
@@ -187,11 +211,11 @@ def get_md_configp_diff(j, args):
     # I tried to do this with the tempfile module, but the files always ended
     # up being size 0 and dissappearing, despite delete=False.
     with open('/tmp/file1', mode='w') as f1:
-        output = build_scope_results("Profiles", args.group1, results1)
+        output = build_results_string("Profiles", args.group1, results1)
         f1.write(output)
         file1 = f1.name
     with open('/tmp/file2', mode='w') as f2:
-        output = build_scope_results("Profiles", args.group2, results2)
+        output = build_results_string("Profiles", args.group2, results2)
         f2.write(output)
         file2 = f2.name
 
@@ -252,6 +276,10 @@ def main():
                             "provided group.",
                               'func': get_group_policies,
                               'kwargs': {'group': 'Group name to query.'}}
+    subparsers['policy_by_package'] = {'help': "Lists all policies which "
+                            "install provided package.",
+                              'func': get_package_policies,
+                              'kwargs': {'package': 'Package name to query.'}}
     subparsers['group_policy_diff'] = {'help': "Lists all policies scoped to "
                             "two provided groups, highlighting the "
                             "differences.", 'func': get_group_policy_diff,
