@@ -117,10 +117,13 @@ def build_results_string(type, search, results):
     Returns:
         Formatted report string.
     """
+    # Integer division!
+    width = max([int(len(result[0])) for result in results])
+
     s = "%s with %s:\n" % (type, search)
     for i in results:
         # TODO(Shea): Fix string building.
-        s += "ID: %s\t\tNAME: %s\n" % (i[0], i[1])
+        s += "ID: {:>{width}}\tNAME: {}\n".format(i[0], i[1], width=width)
     return s
 
 
