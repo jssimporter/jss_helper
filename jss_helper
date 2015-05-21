@@ -48,9 +48,9 @@ def print_object(objs):
         width = max([int(len(str(obj.id))) for obj in objs])
         results = []
         for obj in objs:
-            # TODO(Shea): Fix string building.
-            results.append("ID: {:>{width}}\tNAME: {}".format(
+            results.append(u"ID: {:>{width}}\tNAME: {}".format(
                 obj.id, obj.name, width=width))
+                #obj.id, obj.name.encode("utf8"), width=width))
         print "\n".join(results)
     else:
         print objs
@@ -72,31 +72,12 @@ def build_results_string(type, search, results):
         width = max([int(len(result[0])) for result in results])
         output_strings = []
         for i in results:
-            # TODO(Shea): Fix string building.
-            output_strings.append("ID: {:>{width}}\tNAME: {}".format(
+            output_strings.append(u"ID: {:>{width}}\tNAME: {}".format(
                 i[0], i[1], width=width))
         output_string += "\n".join(output_strings)
     else:
         output_string += "No results found."
     return output_string
-
-
-def create_func(obj_method):
-    """Generates a function to perform basic list and xml queries."""
-    # TODO(Shea): Make the search term be an optional, repeatable arg.
-    def f(j, args):
-        if args.id:
-            id_ = args.id
-            try:
-                results = obj_method(id_)
-            except jss.JSSGetError:
-                print "Object ID: %s does not exist!" % id_
-                sys.exit(1)
-        else:
-            results = obj_method()
-        print_object(results)
-
-    return f
 
 
 def get_group_policies(j, args):
@@ -171,21 +152,29 @@ def get_group_policy_diff(j, args):
     policies.sort()
     group1 = j.ComputerGroup(args.group1)
     group2 = j.ComputerGroup(args.group2)
-    results1 = get_objects_by_scoped_group(policies, search, group1)
-    results2 = get_objects_by_scoped_group(policies, search, group2)
+    results1 = find_object_in_containers(group1, search, policies)
+    results2 = find_object_in_containers(group2, search, policies)
 
     # I tried to do this with the tempfile module, but the files always ended
     # up being size 0 and dissappearing, despite delete=False.
     with open("/tmp/file1", mode="w") as f1:
-        output = build_results_string("Policies", args.group1, results1)
-        f1.write(output)
+        output = build_results_string("Policies", group1.name, results1)
+        # Add a newline to keep diff from complaining.
+        f1.write(output + "\n")
         file1 = f1.name
     with open("/tmp/file2", mode="w") as f2:
-        output = build_results_string("Policies", args.group2, results2)
-        f2.write(output)
+        output = build_results_string("Policies", group2.name, results2)
+        # Add a newline to keep diff from complaining.
+        f2.write(output + "\n")
         file2 = f2.name
 
-    subprocess.call(["diff", "-y", file1, file2])
+    # Diff will return 1 if files differ, so we have to catch that error.
+    try:
+        result = subprocess.check_output(["diff", "-dy", file1, file2])
+    except subprocess.CalledProcessError as err:
+        result = err.output
+
+    print result
 
 
 def promote(j, args):
@@ -241,6 +230,7 @@ def get_md_configp_diff(j, args):
 
     subprocess.call(["diff", "-y", file1, file2])
 
+
 def build_argument_parser(j):
     """Build the argument parser for jss_helper.
 
@@ -261,22 +251,31 @@ def build_argument_parser(j):
     # computer
     subparsers["computer"] = {
         "help": "Get a list of all computers, or an individual computer.",
-        "func": create_func(j.Computer),
-        "args": {"--id": {"help": "ID of computer to retrieve."}}}
+        "func": create_search_func(j.Computer),
+        "args": {"search": {"help": "ID or name of computer to retrieve.",
+                            "default": "",
+                            "nargs": "?"}}}
     subparsers["group"] = {
         "help": "Get a list of all computer groups, or an individual group.",
-        "func": create_func(j.ComputerGroup),
-        "args": {"--id": {"help": "ID of computer group to retrieve."}}}
+        "func": create_search_func(j.ComputerGroup),
+        "args": {"search": {"help": "ID or name of computer group to "
+                                    "retrieve.",
+                            "default": "",
+                            "nargs": "?"}}}
     subparsers["package"] = {
         "help": "Get a list of all packages' names and IDs, or the package "
                 "XML.",
-        "func": create_func(j.Package),
-        "args": {"--id": {"help": "ID of policy to retrieve."}}}
+        "func": create_search_func(j.Package),
+        "args": {"search": {"help": "ID or name of package to retrieve.",
+                            "default": "",
+                            "nargs": "?"}}}
     subparsers["policy"] = {
         "help": "Get a list of all policies' names and IDs, or the policy "
                 "XML.",
-        "func": create_func(j.Policy),
-        "args": {"--id": {"help": "ID of policy to retrieve."}}}
+        "func": create_search_func(j.Policy),
+        "args": {"search": {"help": "ID or name of policy to retrieve.",
+                            "default": "",
+                            "nargs": "?"}}}
     subparsers["policies_with_group"] = {
         "help": "Lists all policies scoped to provided group.",
         "func": get_group_policies,
@@ -293,22 +292,31 @@ def build_argument_parser(j):
                  "group2": {"help": "Group name to query."}}}
     subparsers["category"] = {
         "help": "Get a list of all categories' names and IDs.",
-        "func": create_func(j.Category),
-        "args": {"--id": {"help": "ID of category to retrieve."}}}
+        "func": create_search_func(j.Category),
+        "args": {"search": {"help": "ID or name of category to retrieve.",
+                            "default": "",
+                            "nargs": "?"}}}
     subparsers["md"] = {
         "help": "Get a list of mobile devices, or find one by ID.",
-        "func": create_func(j.MobileDevice),
-        "args": {"--id": {"help": "ID of mobile device to retrieve."}}}
+        "func": create_search_func(j.MobileDevice),
+        "args": {"search": {"help": "ID or name of mobile device to retrieve.",
+                            "default": "",
+                            "nargs": "?"}}}
     subparsers["md_group"] = {
         "help": "Get a list of mobile device groups, or find one by ID.",
-        "func": create_func(j.MobileDeviceGroup),
-        "args": {"--id": {"help": "ID of mobile device group to retrieve."}}}
+        "func": create_search_func(j.MobileDeviceGroup),
+        "args": {"search": {"help": "ID or name of mobile device group to "
+                                    "retrieve.",
+                            "default": "",
+                            "nargs": "?"}}}
     subparsers["md_configp"] = {
         "help": "Get a list of mobile device configuration profiles, or find "
                 "one by ID, ",
-        "func": create_func(j.MobileDeviceConfigurationProfile),
-        "args": {"--id": {"help": "ID of mobile device configuration profile "
-                          "to retrieve."}}}
+        "func": create_search_func(j.MobileDeviceConfigurationProfile),
+        "args": {"search": {"help": "ID or name of mobile device configuration"
+                                    " profile to retrieve.",
+                            "default": "",
+                            "nargs": "?"}}}
     subparsers["md_configp_by_group"] = {
         "help": "Lists all mobile configuration profiles scoped to provided "
                 "group.",
@@ -326,8 +334,6 @@ def build_argument_parser(j):
         for arg in subparsers[command]["args"]:
             sub.add_argument(arg, **subparsers[command]["args"][arg])
         sub.set_defaults(func=subparsers[command]["func"])
-    #for name, d in subparsers.items():
-        #create_subparser(subparser, name, d["help"], d["func"], **d["kwargs"])
 
     # More complicated parsers.
 
@@ -355,18 +361,22 @@ def build_argument_parser(j):
 
     return parser
 
-#def create_subparser(parser, name, help, func, **kwargs):
-#    """Create subparsers for our interface.
-#
-#    Args:
-#        subparsers: A dict of
-#
-#    """
-#    subparser = parser.add_parser(name, help=help)
-#    if kwargs:
-#        for arg_name, extra_args in kwargs.items():
-#            subparser.add_argument(arg_name, **extra_args)
-#    subparser.set_defaults(func=func)
+
+def create_search_func(obj_method):
+    """Generates a function to perform basic list and xml queries."""
+    # TODO(Shea): Make the search term be an optional, repeatable arg.
+    def f(j, args):
+        if args.search:
+            try:
+                results = obj_method(args.search)
+            except jss.JSSGetError:
+                print "Object: %s does not exist!" % args.search
+                sys.exit(1)
+        else:
+            results = obj_method()
+        print_object(results)
+
+    return f
 
 
 def main():
