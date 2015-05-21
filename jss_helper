@@ -39,9 +39,9 @@ REQUIRED_PYTHON_JSS_VERSION = StrictVersion('0.3.4')
 def print_object(objs):
     if isinstance(objs, list):
         for obj in objs:
-            print("ID: %s\t\tNAME: %s" % (obj.id, obj.name))
+            print "ID: %s\t\tNAME: %s" % (obj.id, obj.name)
     else:
-        print(objs)
+        print objs
 
 
 def create_func(obj_method):
@@ -52,7 +52,7 @@ def create_func(obj_method):
             try:
                 results = obj_method(id_)
             except JSSGetError:
-                print("Object ID: %s does not exist!" % id_)
+                print "Object ID: %s does not exist!" % id_
                 sys.exit(1)
         else:
             results = obj_method()
@@ -69,7 +69,7 @@ def get_group_policies(j, args):
     results = get_objects_by_scoped_group(policies, search, group)
 
     output = build_scope_results('Policies', args.group, results)
-    print(output)
+    print output
 
 
 def get_objects_by_scoped_group(objs, search, group):
@@ -102,13 +102,13 @@ def build_scope_results(type, group, results):
 
 def batch_scope(j, args):
     group = j.ComputerGroup(args.group)
-    print("Scoping to group: %s" % group.name)
-    print(79 * '-')
+    print "Scoping to group: %s" % group.name
+    print 79 * '-'
     for policy_query in args.policies:
         policy = j.Policy(int(policy_query))
         policy.add_object_to_scope(group)
         policy.save()
-        print("%s: Success." % policy.name)
+        print "%s: Success." % policy.name
 
 
 def get_md_configp_group(j, args):
@@ -119,7 +119,7 @@ def get_md_configp_group(j, args):
     results = get_objects_by_scoped_group(configps, search, group)
 
     output = build_scope_results('Profiles', args.group, results)
-    print(output)
+    print output
 
 
 def get_group_policy_diff(j, args):
@@ -167,11 +167,11 @@ def promote(j, args):
         policy_name_element = policy.find('general/name')
         old_version = re.search(r'[\s\-]([0-9.]+)$', policy_name_element.text).group(1)
         new_version = re.search(r'([0-9.]*[0-9]+)\.pkg$', new_package.name).group(1)
-        print(old_version, new_version)
+        print old_version, new_version
         name = policy_name_element.text
-        print("Old name: %s" % name)
+        print "Old name: %s" % name
         name = name.replace(old_version, new_version)
-        print("New name: %s" % name)
+        print "New name: %s" % name
         policy_name_element.text = name
     policy.save()
 
