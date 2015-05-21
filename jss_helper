@@ -85,8 +85,8 @@ def create_func(obj_method):
     """Generates a function to perform basic list and xml queries."""
     # TODO(Shea): Make the search term be an optional, repeatable arg.
     def f(j, args):
-        if args.obj:
-            id_ = args.obj
+        if args.id:
+            id_ = args.id
             try:
                 results = obj_method(id_)
             except jss.JSSGetError:
@@ -241,33 +241,14 @@ def get_md_configp_diff(j, args):
 
     subprocess.call(["diff", "-y", file1, file2])
 
+def build_argument_parser(j):
+    """Build the argument parser for jss_helper.
 
-def create_subparser(parser, name, help, func, **kwargs):
-    """Create subparsers for our interface."""
-    subparser = parser.add_parser(name, help=help)
-    if kwargs:
-        for arg_name, extra_args in kwargs.items():
-            subparser.add_argument(arg_name, **extra_args)
-    subparser.set_defaults(func=func)
+    Args:
+        j: A JSS object.
 
-
-def main():
-    """Run as a cli command."""
-
-    # Ensure we have the right version of python-jss
-    try:
-        python_jss_version = StrictVersion(jss.__version__)
-    except AttributeError:
-        python_jss_version = StrictVersion("0.0.0")
-
-    if python_jss_version < REQUIRED_PYTHON_JSS_VERSION:
-        print "Requires python-jss version: %s. Installed: %s" % (
-            (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
-        sys.exit()
-
-    jss_prefs = jss.JSSPrefs()
-    j = jss.JSS(jss_prefs=jss_prefs)
-
+    Returns: A configured argparse parser.
+    """
     # Create our argument parser
     parser = argparse.ArgumentParser(description="Query the JSS.")
     parser.add_argument("-v", action="store_true", help="Verbose output.")
@@ -281,67 +262,72 @@ def main():
     subparsers["computer"] = {
         "help": "Get a list of all computers, or an individual computer.",
         "func": create_func(j.Computer),
-        "args": {"--id": {"help": "ID of computer to retrieve."}}
+        "args": {"--id": {"help": "ID of computer to retrieve."}}}
     subparsers["group"] = {
         "help": "Get a list of all computer groups, or an individual group.",
         "func": create_func(j.ComputerGroup),
-        "args": {"--id": "ID of computer group to retrieve."}}
+        "args": {"--id": {"help": "ID of computer group to retrieve."}}}
     subparsers["package"] = {
         "help": "Get a list of all packages' names and IDs, or the package "
                 "XML.",
         "func": create_func(j.Package),
-        "args": {"--id": "ID of policy to retrieve.",}}
+        "args": {"--id": {"help": "ID of policy to retrieve."}}}
     subparsers["policy"] = {
         "help": "Get a list of all policies' names and IDs, or the policy "
                 "XML.",
         "func": create_func(j.Policy),
-        "args": {"--id": "ID of policy to retrieve.",}}
+        "args": {"--id": {"help": "ID of policy to retrieve."}}}
     subparsers["policies_with_group"] = {
         "help": "Lists all policies scoped to provided group.",
         "func": get_group_policies,
-        "args": {"group": "Group name to query."}}
+        "args": {"group": {"help": "Group name to query."}}}
     subparsers["policies_with_package"] = {
         "help": "Lists all policies which install a package.",
         "func": get_package_policies,
-        "args": {"package": "Package name or ID to query."}}
+        "args": {"package": {"help": "Package name or ID to query."}}}
     subparsers["group_policy_diff"] = {
         "help": "Lists all policies scoped to two provided groups, "
                 "highlighting the differences.",
         "func": get_group_policy_diff,
-        "args": {"group1": "Group name to query.",
-                   "group2": "Group name to query."}}
+        "args": {"group1": {"help": "Group name to query."},
+                 "group2": {"help": "Group name to query."}}}
     subparsers["category"] = {
         "help": "Get a list of all categories' names and IDs.",
         "func": create_func(j.Category),
-        "args": {"--id": "ID of category to retrieve."}}
+        "args": {"--id": {"help": "ID of category to retrieve."}}}
     subparsers["md"] = {
         "help": "Get a list of mobile devices, or find one by ID.",
         "func": create_func(j.MobileDevice),
-        "args": {"--id": "ID of mobile device to retrieve."}}
+        "args": {"--id": {"help": "ID of mobile device to retrieve."}}}
     subparsers["md_group"] = {
         "help": "Get a list of mobile device groups, or find one by ID.",
         "func": create_func(j.MobileDeviceGroup),
-        "args": {"--id": "ID of mobile device group " "to retrieve."}}
+        "args": {"--id": {"help": "ID of mobile device group to retrieve."}}}
     subparsers["md_configp"] = {
         "help": "Get a list of mobile device configuration profiles, or find "
                 "one by ID, ",
         "func": create_func(j.MobileDeviceConfigurationProfile),
-        "args": {"--id": "ID of mobile device configuration profile to "
-                           "retrieve."}}
+        "args": {"--id": {"help": "ID of mobile device configuration profile "
+                          "to retrieve."}}}
     subparsers["md_configp_by_group"] = {
         "help": "Lists all mobile configuration profiles scoped to provided "
                 "group.",
         "func": get_md_configp_group,
-        "args": {"group": "Group name to query."}}
+        "args": {"group": {"help": "Group name to query."}}}
     subparsers["md_configp_diff"] = {
         "help": "Lists the differences between all mobile configuration "
                 "profiles scoped to the provided groups.",
         "func": get_md_configp_diff,
-        "args": {"group1": "Group name to query.",
-                   "group2": "Group name to query."}}
+        "args": {"group1": {"help": "Group name to query."},
+                 "group2": {"help": "Group name to query."}}}
 
-    for name, d in subparsers.items():
-        create_subparser(subparser, name, d["help"], d["func"], **d["kwargs"])
+    for command in subparsers:
+        sub = subparser.add_parser(command, help=subparsers[command]["help"])
+        for arg in subparsers[command]["args"]:
+            sub.add_argument(arg, **subparsers[command]["args"][arg])
+        sub.set_defaults(func=subparsers[command]["func"])
+    #for name, d in subparsers.items():
+        #create_subparser(subparser, name, d["help"], d["func"], **d["kwargs"])
 
     # More complicated parsers.
 
@@ -367,6 +353,40 @@ def main():
                                    action="store_true")
     promote_subparser.set_defaults(func=promote)
 
+    return parser
+
+#def create_subparser(parser, name, help, func, **kwargs):
+#    """Create subparsers for our interface.
+#
+#    Args:
+#        subparsers: A dict of
+#
+#    """
+#    subparser = parser.add_parser(name, help=help)
+#    if kwargs:
+#        for arg_name, extra_args in kwargs.items():
+#            subparser.add_argument(arg_name, **extra_args)
+#    subparser.set_defaults(func=func)
+
+
+def main():
+    """Run as a cli command."""
+
+    # Ensure we have the right version of python-jss
+    try:
+        python_jss_version = StrictVersion(jss.__version__)
+    except AttributeError:
+        python_jss_version = StrictVersion("0.0.0")
+
+    if python_jss_version < REQUIRED_PYTHON_JSS_VERSION:
+        print "Requires python-jss version: %s. Installed: %s" % (
+            (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
+        sys.exit()
+
+    jss_prefs = jss.JSSPrefs()
+    j = jss.JSS(jss_prefs=jss_prefs)
+
+    parser = build_argument_parser(j)
     args = parser.parse_args()
     if args.v:
         j.verbose = True
