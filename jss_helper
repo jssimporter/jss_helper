@@ -141,7 +141,7 @@ def get_md_configp_group(j, args):
     search = "scope/mobile_device_groups/mobile_device_group"
     configps = j.MobileDeviceConfigurationProfile()
     group = j.MobileDeviceGroup(args.group)
-    results = get_objects_by_scoped_group(configps, search, group)
+    results = find_object_in_containers(group, search, configps)
     output = build_results_string("Profiles", args.group, results)
     print output
 
@@ -214,21 +214,29 @@ def get_md_configp_diff(j, args):
     profiles = j.MobileDeviceConfigurationProfile()
     group1 = j.MobileDeviceGroup(args.group1)
     group2 = j.MobileDeviceGroup(args.group2)
-    results1 = get_objects_by_scoped_group(profiles, search, group1)
-    results2 = get_objects_by_scoped_group(profiles, search, group2)
+    results1 = find_object_in_containers(group1, search, profiles)
+    results2 = find_object_in_containers(group2, search, profiles)
 
     # I tried to do this with the tempfile module, but the files always ended
     # up being size 0 and dissappearing, despite delete=False.
     with open("/tmp/file1", mode="w") as f1:
-        output = build_results_string("Profiles", args.group1, results1)
-        f1.write(output)
+        output = build_results_string("Profiles", group1.name, results1)
+        # Add a newline to keep diff from complaining.
+        f1.write(output + "\n")
         file1 = f1.name
     with open("/tmp/file2", mode="w") as f2:
-        output = build_results_string("Profiles", args.group2, results2)
-        f2.write(output)
+        output = build_results_string("Profiles", group2.name, results2)
+        # Add a newline to keep diff from complaining.
+        f2.write(output + "\n")
         file2 = f2.name
 
-    subprocess.call(["diff", "-y", file1, file2])
+    # Diff will return 1 if files differ, so we have to catch that error.
+    try:
+        result = subprocess.check_output(["diff", "-dy", file1, file2])
+    except subprocess.CalledProcessError as err:
+        result = err.output
+
+    print result
 
 
 def build_argument_parser(j):
