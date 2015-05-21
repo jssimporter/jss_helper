@@ -56,7 +56,7 @@ def print_object(objs):
         print objs
 
 
-def build_results_string(type, search, results):
+def build_results_string(obj_type, search, results):
     """Format a list of results for output reporting.
 
     Args:
@@ -67,7 +67,7 @@ def build_results_string(type, search, results):
     Returns:
         Formatted report string.
     """
-    output_string = "%s with %s:\n" % (type, search)
+    output_string = "%s with %s:\n" % (obj_type, search)
     if results:
         width = max([int(len(result[0])) for result in results])
         output_strings = []
@@ -126,6 +126,13 @@ def find_object_in_containers(search_object, search_path, containers):
 
 
 def batch_scope(j, args):
+    """Scope a list of policies to a computer group.
+
+    Args:
+        args: argparser args with properties:
+            group: Name or ID of computer group.
+            policies: List of type int ID's of policies to scope.
+    """
     group = j.ComputerGroup(args.group)
     print "Scoping to group: %s" % group.name
     print 79 * "-"
@@ -147,6 +154,13 @@ def get_md_configp_group(j, args):
 
 
 def get_group_policy_diff(j, args):
+    """Find and diff all of the policies scoped to two different groups.
+
+    Args:
+        args: argparser args with properties:
+            group1: Name or ID of first computer group.
+            group2: Name or ID of second computer group.
+    """
     search = "scope/computer_groups/computer_group"
     policies = j.Policy()
     policies.sort()
@@ -157,20 +171,21 @@ def get_group_policy_diff(j, args):
 
     # I tried to do this with the tempfile module, but the files always ended
     # up being size 0 and dissappearing, despite delete=False.
-    with open("/tmp/file1", mode="w") as f1:
+    with open("/tmp/file1", mode="w") as file1:
         output = build_results_string("Policies", group1.name, results1)
         # Add a newline to keep diff from complaining.
-        f1.write(output + "\n")
-        file1 = f1.name
-    with open("/tmp/file2", mode="w") as f2:
+        file1.write(output + "\n")
+        file1_name = file1.name
+    with open("/tmp/file2", mode="w") as file2:
         output = build_results_string("Policies", group2.name, results2)
         # Add a newline to keep diff from complaining.
-        f2.write(output + "\n")
-        file2 = f2.name
+        file2.write(output + "\n")
+        file2_name = file2.name
 
     # Diff will return 1 if files differ, so we have to catch that error.
     try:
-        result = subprocess.check_output(["diff", "-dy", file1, file2])
+        result = subprocess.check_output(["diff", "-dy", file1_name,
+                                          file2_name])
     except subprocess.CalledProcessError as err:
         result = err.output
 
@@ -210,6 +225,13 @@ def promote(j, args):
 
 
 def get_md_configp_diff(j, args):
+    """Find and diff all configuration profiles scoped to two groups.
+
+    Args:
+        args: argparser args with properties:
+            group1: Name or ID of first group.
+            group2: Name or ID of second group.
+    """
     search = "scope/mobile_device_groups/mobile_device_group"
     profiles = j.MobileDeviceConfigurationProfile()
     group1 = j.MobileDeviceGroup(args.group1)
@@ -217,22 +239,23 @@ def get_md_configp_diff(j, args):
     results1 = find_object_in_containers(group1, search, profiles)
     results2 = find_object_in_containers(group2, search, profiles)
 
-    # I tried to do this with the tempfile module, but the files always ended
-    # up being size 0 and dissappearing, despite delete=False.
-    with open("/tmp/file1", mode="w") as f1:
+    # I tried to do this with the tempfile module, but the files always
+    # ended up being size 0 and dissappearing, despite delete=False.
+    with open("/tmp/file1_name", mode="w") as file1:
         output = build_results_string("Profiles", group1.name, results1)
         # Add a newline to keep diff from complaining.
-        f1.write(output + "\n")
-        file1 = f1.name
-    with open("/tmp/file2", mode="w") as f2:
+        file1.write(output + "\n")
+        file1_name = file1.name
+    with open("/tmp/file2_name", mode="w") as file2:
         output = build_results_string("Profiles", group2.name, results2)
         # Add a newline to keep diff from complaining.
-        f2.write(output + "\n")
-        file2 = f2.name
+        file2.write(output + "\n")
+        file2_name = file2.name
 
     # Diff will return 1 if files differ, so we have to catch that error.
     try:
-        result = subprocess.check_output(["diff", "-dy", file1, file2])
+        result = subprocess.check_output(["diff", "-dy", file1_name,
+                                          file2_name])
     except subprocess.CalledProcessError as err:
         result = err.output
 
@@ -346,24 +369,24 @@ def build_argument_parser(j):
     # More complicated parsers.
 
     # Batch Scope
-    help = "Scope a list of policies to a group."
-    batch_scope_subparser = subparser.add_parser("batch_scope", help=help)
+    arg_help = "Scope a list of policies to a group."
+    batch_scope_subparser = subparser.add_parser("batch_scope", help=arg_help)
     batch_scope_subparser.add_argument("group", help="Name of group to scope "
                                        "policies.")
-    help = "A space delimited list of policy IDs."
-    batch_scope_subparser.add_argument("policies", help=help, nargs="*")
+    arg_help = "A space delimited list of policy IDs."
+    batch_scope_subparser.add_argument("policies", help=arg_help, nargs="*")
     batch_scope_subparser.set_defaults(func=batch_scope)
 
     # Promote
-    help = "Promote a package from development to production by updating an" \
-            " existing production policy with a newer package."
-    promote_subparser = subparser.add_parser("promote", help=help)
+    arg_help = ("Promote a package from development to production by updating "
+                "an existing production policy with a newer package.")
+    promote_subparser = subparser.add_parser("promote", help=arg_help)
     promote_subparser.add_argument("old_package", help="Package name or ID.")
     promote_subparser.add_argument("new_package", help="Package name or ID.")
     promote_subparser.add_argument("policy", help="Policy name or ID.")
-    help = "If policy name includes a package version number, update it " \
-            "with the new version number."
-    promote_subparser.add_argument("--update-version-in-name", help=help,
+    arg_help = ("If policy name includes a package version number, update it "
+                "with the new version number.")
+    promote_subparser.add_argument("--update-version-in-name", help=arg_help,
                                    action="store_true")
     promote_subparser.set_defaults(func=promote)
 
@@ -373,7 +396,9 @@ def build_argument_parser(j):
 def create_search_func(obj_method):
     """Generates a function to perform basic list and xml queries."""
     # TODO(Shea): Make the search term be an optional, repeatable arg.
-    def f(j, args):
+    # pylint: disable=unused-argument
+    def search_func(j, args):
+        """Searches JSS for all objects OR a specific object."""
         if args.search:
             try:
                 results = obj_method(args.search)
@@ -383,8 +408,9 @@ def create_search_func(obj_method):
         else:
             results = obj_method()
         print_object(results)
+    # pylint: enable=unused-argument
 
-    return f
+    return search_func
 
 
 def main():
