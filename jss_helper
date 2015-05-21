@@ -26,7 +26,7 @@ import re
 import subprocess
 import sys
 
-from jss import *
+import jss
 try:
     from jss import __version__
 except ImportError:
@@ -51,7 +51,7 @@ def create_func(obj_method):
             id_ = int(args.id)
             try:
                 results = obj_method(id_)
-            except JSSGetError:
+            except jss.JSSGetError:
                 print "Object ID: %s does not exist!" % id_
                 sys.exit(1)
         else:
@@ -96,6 +96,7 @@ def build_scope_results(type, group, results):
     """Print a list of results for type."""
     s = "%s in scope for %s:\n" % (type, group)
     for i in results:
+        # TODO(Shea): Fix string building.
         s += "ID: %s\t\tNAME: %s\n" % (i[0], i[1])
     return s
 
@@ -217,8 +218,8 @@ def main():
             (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
         sys.exit()
 
-    jss_prefs = JSSPrefs()
-    j = JSS(jss_prefs=jss_prefs)
+    jss_prefs = jss.JSSPrefs()
+    j = jss.JSS(jss_prefs=jss_prefs)
 
     # Create our argument parser
     parser = argparse.ArgumentParser(description="Query the JSS.")
