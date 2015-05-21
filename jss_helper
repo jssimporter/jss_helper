@@ -213,8 +213,8 @@ def main():
     # Ensure we have the right version of python-jss
     python_jss_version = StrictVersion(__version__)
     if python_jss_version < REQUIRED_PYTHON_JSS_VERSION:
-        print("Requires python-jss version: %s. Installed: %s" %
-                    (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
+        print "Requires python-jss version: %s. Installed: %s" % (
+            (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
         sys.exit()
 
     jss_prefs = JSSPrefs()
@@ -230,69 +230,63 @@ def main():
     subparsers = {}
 
     # computer
-    subparsers['computer'] = {'help': "Get a list of all computers, or an "
-                              "individual computer.",
-                              'func': create_func(j.Computer),
-                              'kwargs': {'--id': 'ID of computer to retrieve.'}
-                             }
-    subparsers['group'] = {'help': "Get a list of all computer groups, or an "
-                              "individual group.",
-                              'func': create_func(j.ComputerGroup),
-                              'kwargs': {'--id': 'ID of computer group to '
-                                         'retrieve.'}}
-    subparsers['package'] = {'help': "Get a list of all packages' names and "
-                            "IDs, or the package XML.",
-                              'func': create_func(j.Package),
-                              'kwargs': {'--id': 'ID of policy to retrieve.',}}
-    subparsers['policy'] = {'help': "Get a list of all policies' names and "
-                            "IDs, or the policy XML.",
-                              'func': create_func(j.Policy),
-                              'kwargs': {'--id': 'ID of policy to retrieve.',}}
-    subparsers['policy_by_group'] = {'help': "Lists all policies scoped to "
-                            "provided group.",
-                              'func': get_group_policies,
-                              'kwargs': {'group': 'Group name to query.'}}
-    subparsers['group_policy_diff'] = {'help': "Lists all policies scoped to "
-                            "two provided groups, highlighting the "
-                            "differences.", 'func': get_group_policy_diff,
-                              'kwargs': {'group1': 'Group name to query.',
-                                         'group2': 'Group name to query.'}}
-    subparsers['category'] = {'help': "Get a list of all categories' names and "
-                            "IDs.",
-                              'func': create_func(j.Category),
-                              'kwargs': {'--id': 'ID of category to retrieve.'}
-                             }
-    subparsers['md'] = {'help': "Get a list of mobile devices, or find one "
-                            "by ID.",
-                              'func': create_func(j.MobileDevice),
-                              'kwargs': {'--id': 'ID of mobile device to '
-                                         'retrieve.'}}
-    subparsers['md_group'] = {'help': "Get a list of mobile device groups, "
-                              "or find one by ID.",
-                              'func': create_func(j.MobileDeviceGroup),
-                              'kwargs': {'--id': 'ID of mobile device group '
-                                         'to retrieve.'}}
-    subparsers['md_configp'] = {'help': "Get a list of mobile device "
-                                "configuration profiles, or find one by ID, ",
-                               'func':
-                               create_func(j.MobileDeviceConfigurationProfile),
-                               'kwargs': {'--id': 'ID of mobile device '
-                                          'configuration profile to retrieve.'}
-                               }
-    subparsers['md_configp_by_group'] = {'help': "Lists all mobile "
-                                         "configuration profiles scoped to "
-                                         "provided group.",
-                                        'func': get_md_configp_group,
-                                        'kwargs': {'group': 'Group name to '
-                                                   'query.'}}
-    subparsers['md_configp_diff'] = {'help': "Lists the differences between"
-                                         " all mobile configuration profiles"
-                                         " scoped to the provided groups.",
-                                        'func': get_md_configp_diff,
-                                        'kwargs': {'group1': 'Group name to '\
-                                                   'query.', 'group2':
-                                                    'Group name to query.'}
-                                        }
+    subparsers['computer'] = {
+        'help': "Get a list of all computers, or an individual computer.",
+        'func': create_func(j.Computer),
+        'kwargs': {'--id': 'ID of computer to retrieve.'}}
+    subparsers['group'] = {
+        'help': "Get a list of all computer groups, or an individual group.",
+        'func': create_func(j.ComputerGroup),
+        'kwargs': {'--id': 'ID of computer group to retrieve.'}}
+    subparsers['package'] = {
+        'help': "Get a list of all packages' names and IDs, or the package "
+                "XML.",
+        'func': create_func(j.Package),
+        'kwargs': {'--id': 'ID of policy to retrieve.',}}
+    subparsers['policy'] = {
+        'help': "Get a list of all policies' names and IDs, or the policy "
+                "XML.",
+        'func': create_func(j.Policy),
+        'kwargs': {'--id': 'ID of policy to retrieve.',}}
+    subparsers['policy_by_group'] = {
+        'help': "Lists all policies scoped to provided group.",
+        'func': get_group_policies,
+        'kwargs': {'group': 'Group name to query.'}}
+    subparsers['group_policy_diff'] = {
+        'help': "Lists all policies scoped to two provided groups, "
+                "highlighting the differences.",
+        'func': get_group_policy_diff,
+        'kwargs': {'group1': 'Group name to query.',
+                   'group2': 'Group name to query.'}}
+    subparsers['category'] = {
+        'help': "Get a list of all categories' names and IDs.",
+        'func': create_func(j.Category),
+        'kwargs': {'--id': 'ID of category to retrieve.'}}
+    subparsers['md'] = {
+        'help': "Get a list of mobile devices, or find one by ID.",
+        'func': create_func(j.MobileDevice),
+        'kwargs': {'--id': 'ID of mobile device to retrieve.'}}
+    subparsers['md_group'] = {
+        'help': "Get a list of mobile device groups, or find one by ID.",
+        'func': create_func(j.MobileDeviceGroup),
+        'kwargs': {'--id': 'ID of mobile device group ' 'to retrieve.'}}
+    subparsers['md_configp'] = {
+        'help': "Get a list of mobile device configuration profiles, or find "
+                "one by ID, ",
+        'func': create_func(j.MobileDeviceConfigurationProfile),
+        'kwargs': {'--id': "ID of mobile device configuration profile to "
+                           "retrieve."}}
+    subparsers['md_configp_by_group'] = {
+        'help': "Lists all mobile configuration profiles scoped to provided "
+                "group.",
+        'func': get_md_configp_group,
+        'kwargs': {'group': 'Group name to query.'}}
+    subparsers['md_configp_diff'] = {
+        'help': "Lists the differences between all mobile configuration "
+                "profiles scoped to the provided groups.",
+        'func': get_md_configp_diff,
+        'kwargs': {'group1': 'Group name to query.',
+                   'group2': 'Group name to query.'}}
 
     for name, d in subparsers.items():
         create_subparser(subparser, name, d['help'], d['func'], **d['kwargs'])
