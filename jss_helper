@@ -30,22 +30,63 @@ import jss
 
 
 __version__ = "1.0.1"
-REQUIRED_PYTHON_JSS_VERSION = StrictVersion('0.3.4')
+REQUIRED_PYTHON_JSS_VERSION = StrictVersion("0.3.4")
 
 
 def print_object(objs):
+    """Flexible print method for lists and XML.
+
+    Prints formatted lists of ID/NAME or the XML for an object.
+
+    Args:
+        objs: List of JSSObjects.
+    """
+    # TODO(Shea): Refactor into build_results_string.
     if isinstance(objs, list):
+        #for obj in objs:
+        #    print "ID: %s\t\tNAME: %s" % (obj.id, obj.name)
+        width = max([int(len(str(obj.id))) for obj in objs])
+        results = []
         for obj in objs:
-            print "ID: %s\t\tNAME: %s" % (obj.id, obj.name)
+            # TODO(Shea): Fix string building.
+            results.append("ID: {:>{width}}\tNAME: {}".format(
+                obj.id, obj.name, width=width))
+        print "\n".join(results)
     else:
         print objs
 
 
+def build_results_string(type, search, results):
+    """Format a list of results for output reporting.
+
+    Args:
+        type: String name of type to use as a header.
+        search: String name of the object matched.
+        results: An iterable of match tuples, of (int ID, str name).
+
+    Returns:
+        Formatted report string.
+    """
+    output_string = "%s with %s:\n" % (type, search)
+    if results:
+        width = max([int(len(result[0])) for result in results])
+        output_strings = []
+        for i in results:
+            # TODO(Shea): Fix string building.
+            output_strings.append("ID: {:>{width}}\tNAME: {}".format(
+                i[0], i[1], width=width))
+        output_string += "\n".join(output_strings)
+    else:
+        output_string += "No results found."
+    return output_string
+
+
 def create_func(obj_method):
     """Generates a function to perform basic list and xml queries."""
+    # TODO(Shea): Make the search term be an optional, repeatable arg.
     def f(j, args):
-        if args.id:
-            id_ = int(args.id)
+        if args.obj:
+            id_ = args.obj
             try:
                 results = obj_method(id_)
             except jss.JSSGetError:
@@ -60,21 +101,21 @@ def create_func(obj_method):
 
 def get_group_policies(j, args):
     """Find all policies scoped to a group."""
-    search = 'scope/computer_groups/computer_group'
+    search = "scope/computer_groups/computer_group"
     policies = j.Policy()
     group = j.ComputerGroup(args.group)
     results = find_object_in_containers(group, search, policies)
-    output = build_results_string('Policies', group.name, results)
+    output = build_results_string("Policies", group.name, results)
     print output
 
 
 def get_package_policies(j, args):
     """Find all policies which install a package."""
-    search = 'package_configuration/packages/package'
+    search = "package_configuration/packages/package"
     policies = j.Policy()
     package = j.Package(args.package)
     results = find_object_in_containers(package, search, policies)
-    output = build_results_string('Policies', package.name, results)
+    output = build_results_string("Policies", package.name, results)
     print output
 
 
@@ -97,38 +138,16 @@ def find_object_in_containers(search_object, search_path, containers):
     full_objects = containers.retrieve_all()
     for obj in full_objects:
         for element in obj.findall(search_path):
-            if (element.findtext('id') == search_object.id or
-                element.findtext('name') == search_object.name):
+            if (element.findtext("id") == search_object.id or
+                    element.findtext("name") == search_object.name):
                 results.append((obj.id, obj.name))
     return results
-
-
-def build_results_string(type, search, results):
-    """Format a list of results for output reporting.
-
-    Args:
-        type: String name of type to use as a header.
-        search: String name of the object matched.
-        results: An iterable of match tuples, of (int ID, str name).
-
-    Returns:
-        Formatted report string.
-    """
-    s = "%s with %s:\n" % (type, search)
-    if results:
-        width = max([int(len(result[0])) for result in results])
-        for i in results:
-            # TODO(Shea): Fix string building.
-            s += "ID: {:>{width}}\tNAME: {}\n".format(i[0], i[1], width=width)
-    else:
-        s += "No results found."
-    return s
 
 
 def batch_scope(j, args):
     group = j.ComputerGroup(args.group)
     print "Scoping to group: %s" % group.name
-    print 79 * '-'
+    print 79 * "-"
     for policy_query in args.policies:
         policy = j.Policy(int(policy_query))
         policy.add_object_to_scope(group)
@@ -138,16 +157,16 @@ def batch_scope(j, args):
 
 def get_md_configp_group(j, args):
     """Find all mobile device configuration profiles scoped to a group."""
-    search = 'scope/mobile_device_groups/mobile_device_group'
+    search = "scope/mobile_device_groups/mobile_device_group"
     configps = j.MobileDeviceConfigurationProfile()
     group = j.MobileDeviceGroup(args.group)
     results = get_objects_by_scoped_group(configps, search, group)
-    output = build_results_string('Profiles', args.group, results)
+    output = build_results_string("Profiles", args.group, results)
     print output
 
 
 def get_group_policy_diff(j, args):
-    search = 'scope/computer_groups/computer_group'
+    search = "scope/computer_groups/computer_group"
     policies = j.Policy()
     policies.sort()
     group1 = j.ComputerGroup(args.group1)
@@ -157,16 +176,16 @@ def get_group_policy_diff(j, args):
 
     # I tried to do this with the tempfile module, but the files always ended
     # up being size 0 and dissappearing, despite delete=False.
-    with open('/tmp/file1', mode='w') as f1:
+    with open("/tmp/file1", mode="w") as f1:
         output = build_results_string("Policies", args.group1, results1)
         f1.write(output)
         file1 = f1.name
-    with open('/tmp/file2', mode='w') as f2:
+    with open("/tmp/file2", mode="w") as f2:
         output = build_results_string("Policies", args.group2, results2)
         f2.write(output)
         file2 = f2.name
 
-    subprocess.call(['diff', '-y', file1, file2])
+    subprocess.call(["diff", "-y", file1, file2])
 
 
 def promote(j, args):
@@ -178,7 +197,7 @@ def promote(j, args):
     old_package = j.Package(args.old_package)
     new_package = j.Package(args.new_package)
     policy = j.Policy(args.policy)
-    package_config = policy.find('package_configuration/packages')
+    package_config = policy.find("package_configuration/packages")
     policy.remove_object_from_list(old_package, package_config)
     policy.add_package(new_package)
     # This is probably super situational for my organization...
@@ -187,10 +206,10 @@ def promote(j, args):
     # a version number from the package's name. I name all of our packages to
     # include the version number, so this works for me.
     if args.update_version_in_name:
-        policy_name_element = policy.find('general/name')
-        old_version = re.search(r'[\s\-]([0-9.]+)$',
+        policy_name_element = policy.find("general/name")
+        old_version = re.search(r"[\s\-]([0-9.]+)$",
                                 policy_name_element.text).group(1)
-        new_version = re.search(r'([0-9.]*[0-9]+)\.pkg$',
+        new_version = re.search(r"([0-9.]*[0-9]+)\.pkg$",
                                 new_package.name).group(1)
         print old_version, new_version
         name = policy_name_element.text
@@ -202,7 +221,7 @@ def promote(j, args):
 
 
 def get_md_configp_diff(j, args):
-    search = 'scope/mobile_device_groups/mobile_device_group'
+    search = "scope/mobile_device_groups/mobile_device_group"
     profiles = j.MobileDeviceConfigurationProfile()
     group1 = j.MobileDeviceGroup(args.group1)
     group2 = j.MobileDeviceGroup(args.group2)
@@ -211,24 +230,24 @@ def get_md_configp_diff(j, args):
 
     # I tried to do this with the tempfile module, but the files always ended
     # up being size 0 and dissappearing, despite delete=False.
-    with open('/tmp/file1', mode='w') as f1:
+    with open("/tmp/file1", mode="w") as f1:
         output = build_results_string("Profiles", args.group1, results1)
         f1.write(output)
         file1 = f1.name
-    with open('/tmp/file2', mode='w') as f2:
+    with open("/tmp/file2", mode="w") as f2:
         output = build_results_string("Profiles", args.group2, results2)
         f2.write(output)
         file2 = f2.name
 
-    subprocess.call(['diff', '-y', file1, file2])
+    subprocess.call(["diff", "-y", file1, file2])
 
 
 def create_subparser(parser, name, help, func, **kwargs):
     """Create subparsers for our interface."""
     subparser = parser.add_parser(name, help=help)
     if kwargs:
-        for arg_name, arg_help in kwargs.items():
-            subparser.add_argument(arg_name, help=arg_help)
+        for arg_name, extra_args in kwargs.items():
+            subparser.add_argument(arg_name, **extra_args)
     subparser.set_defaults(func=func)
 
 
@@ -251,97 +270,101 @@ def main():
 
     # Create our argument parser
     parser = argparse.ArgumentParser(description="Query the JSS.")
-    parser.add_argument('-v', action='store_true', help="Verbose output.")
-    parser.add_argument('--ssl', default=False, action='store_true',
+    parser.add_argument("-v", action="store_true", help="Verbose output.")
+    parser.add_argument("--ssl", default=False, action="store_true",
                         help="Use SSL verification")
-    subparser = parser.add_subparsers(dest='subparser_name')
+    subparser = parser.add_subparsers(dest="subparser_name")
 
     subparsers = {}
 
     # computer
-    subparsers['computer'] = {
-        'help': "Get a list of all computers, or an individual computer.",
-        'func': create_func(j.Computer),
-        'kwargs': {'--id': 'ID of computer to retrieve.'}}
-    subparsers['group'] = {
-        'help': "Get a list of all computer groups, or an individual group.",
-        'func': create_func(j.ComputerGroup),
-        'kwargs': {'--id': 'ID of computer group to retrieve.'}}
-    subparsers['package'] = {
-        'help': "Get a list of all packages' names and IDs, or the package "
+    subparsers["computer"] = {
+        "help": "Get a list of all computers, or an individual computer.",
+        "func": create_func(j.Computer),
+        "args": {"--id": {"help": "ID of computer to retrieve."}}
+    subparsers["group"] = {
+        "help": "Get a list of all computer groups, or an individual group.",
+        "func": create_func(j.ComputerGroup),
+        "args": {"--id": "ID of computer group to retrieve."}}
+    subparsers["package"] = {
+        "help": "Get a list of all packages' names and IDs, or the package "
                 "XML.",
-        'func': create_func(j.Package),
-        'kwargs': {'--id': 'ID of policy to retrieve.',}}
-    subparsers['policy'] = {
-        'help': "Get a list of all policies' names and IDs, or the policy "
+        "func": create_func(j.Package),
+        "args": {"--id": "ID of policy to retrieve.",}}
+    subparsers["policy"] = {
+        "help": "Get a list of all policies' names and IDs, or the policy "
                 "XML.",
-        'func': create_func(j.Policy),
-        'kwargs': {'--id': 'ID of policy to retrieve.',}}
-    subparsers['policy_by_group'] = {
-        'help': "Lists all policies scoped to provided group.",
-        'func': get_group_policies,
-        'kwargs': {'group': 'Group name to query.'}}
-    subparsers['group_policy_diff'] = {
-        'help': "Lists all policies scoped to two provided groups, "
+        "func": create_func(j.Policy),
+        "args": {"--id": "ID of policy to retrieve.",}}
+    subparsers["policies_with_group"] = {
+        "help": "Lists all policies scoped to provided group.",
+        "func": get_group_policies,
+        "args": {"group": "Group name to query."}}
+    subparsers["policies_with_package"] = {
+        "help": "Lists all policies which install a package.",
+        "func": get_package_policies,
+        "args": {"package": "Package name or ID to query."}}
+    subparsers["group_policy_diff"] = {
+        "help": "Lists all policies scoped to two provided groups, "
                 "highlighting the differences.",
-        'func': get_group_policy_diff,
-        'kwargs': {'group1': 'Group name to query.',
-                   'group2': 'Group name to query.'}}
-    subparsers['category'] = {
-        'help': "Get a list of all categories' names and IDs.",
-        'func': create_func(j.Category),
-        'kwargs': {'--id': 'ID of category to retrieve.'}}
-    subparsers['md'] = {
-        'help': "Get a list of mobile devices, or find one by ID.",
-        'func': create_func(j.MobileDevice),
-        'kwargs': {'--id': 'ID of mobile device to retrieve.'}}
-    subparsers['md_group'] = {
-        'help': "Get a list of mobile device groups, or find one by ID.",
-        'func': create_func(j.MobileDeviceGroup),
-        'kwargs': {'--id': 'ID of mobile device group ' 'to retrieve.'}}
-    subparsers['md_configp'] = {
-        'help': "Get a list of mobile device configuration profiles, or find "
+        "func": get_group_policy_diff,
+        "args": {"group1": "Group name to query.",
+                   "group2": "Group name to query."}}
+    subparsers["category"] = {
+        "help": "Get a list of all categories' names and IDs.",
+        "func": create_func(j.Category),
+        "args": {"--id": "ID of category to retrieve."}}
+    subparsers["md"] = {
+        "help": "Get a list of mobile devices, or find one by ID.",
+        "func": create_func(j.MobileDevice),
+        "args": {"--id": "ID of mobile device to retrieve."}}
+    subparsers["md_group"] = {
+        "help": "Get a list of mobile device groups, or find one by ID.",
+        "func": create_func(j.MobileDeviceGroup),
+        "args": {"--id": "ID of mobile device group " "to retrieve."}}
+    subparsers["md_configp"] = {
+        "help": "Get a list of mobile device configuration profiles, or find "
                 "one by ID, ",
-        'func': create_func(j.MobileDeviceConfigurationProfile),
-        'kwargs': {'--id': "ID of mobile device configuration profile to "
+        "func": create_func(j.MobileDeviceConfigurationProfile),
+        "args": {"--id": "ID of mobile device configuration profile to "
                            "retrieve."}}
-    subparsers['md_configp_by_group'] = {
-        'help': "Lists all mobile configuration profiles scoped to provided "
+    subparsers["md_configp_by_group"] = {
+        "help": "Lists all mobile configuration profiles scoped to provided "
                 "group.",
-        'func': get_md_configp_group,
-        'kwargs': {'group': 'Group name to query.'}}
-    subparsers['md_configp_diff'] = {
-        'help': "Lists the differences between all mobile configuration "
+        "func": get_md_configp_group,
+        "args": {"group": "Group name to query."}}
+    subparsers["md_configp_diff"] = {
+        "help": "Lists the differences between all mobile configuration "
                 "profiles scoped to the provided groups.",
-        'func': get_md_configp_diff,
-        'kwargs': {'group1': 'Group name to query.',
-                   'group2': 'Group name to query.'}}
+        "func": get_md_configp_diff,
+        "args": {"group1": "Group name to query.",
+                   "group2": "Group name to query."}}
 
     for name, d in subparsers.items():
-        create_subparser(subparser, name, d['help'], d['func'], **d['kwargs'])
+        create_subparser(subparser, name, d["help"], d["func"], **d["kwargs"])
 
     # More complicated parsers.
 
     # Batch Scope
     help = "Scope a list of policies to a group."
-    batch_scope_subparser = subparser.add_parser('batch_scope', help=help)
-    batch_scope_subparser.add_argument('group', help="Name of group to scope "
+    batch_scope_subparser = subparser.add_parser("batch_scope", help=help)
+    batch_scope_subparser.add_argument("group", help="Name of group to scope "
                                        "policies.")
     help = "A space delimited list of policy IDs."
-    batch_scope_subparser.add_argument('policies', help=help, nargs='*')
+    batch_scope_subparser.add_argument("policies", help=help, nargs="*")
     batch_scope_subparser.set_defaults(func=batch_scope)
 
     # Promote
     help = "Promote a package from development to production by updating an" \
             " existing production policy with a newer package."
-    promote_subparser = subparser.add_parser('promote', help=help)
-    promote_subparser.add_argument('old_package', help='Package name or ID.')
-    promote_subparser.add_argument('new_package', help='Package name or ID.')
-    promote_subparser.add_argument('policy', help='Policy name or ID.')
-    help = 'If policy name includes a package version number, update it ' \
-            'with the new version number.'
-    promote_subparser.add_argument('--update-version-in-name', help=help,
-                                   action='store_true')
+    promote_subparser = subparser.add_parser("promote", help=help)
+    promote_subparser.add_argument("old_package", help="Package name or ID.")
+    promote_subparser.add_argument("new_package", help="Package name or ID.")
+    promote_subparser.add_argument("policy", help="Policy name or ID.")
+    help = "If policy name includes a package version number, update it " \
+            "with the new version number."
+    promote_subparser.add_argument("--update-version-in-name", help=help,
+                                   action="store_true")
     promote_subparser.set_defaults(func=promote)
 
     args = parser.parse_args()
@@ -353,5 +376,5 @@ def main():
     args.func(j, args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
