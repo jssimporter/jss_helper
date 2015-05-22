@@ -355,87 +355,85 @@ def build_argument_parser(j):
 
     # computer
     subparsers["computer"] = {
-        "help": "Get a list of all computers, or an individual computer.",
+        "help": "List all computers, or search for an individual computer.",
         "func": create_search_func(j.Computer),
-        "args": {"search": {"help": "ID or name of computer to retrieve.",
+        "args": {"search": {"help": "ID or name of computer.",
                             "default": "",
                             "nargs": "?"}}}
     subparsers["group"] = {
-        "help": "Get a list of all computer groups, or an individual group.",
+        "help": "List all computer groups, or search for an individual group.",
         "func": create_search_func(j.ComputerGroup),
-        "args": {"search": {"help": "ID or name of computer group to "
-                                    "retrieve.",
+        "args": {"search": {"help": "ID or name of computer group.",
                             "default": "",
                             "nargs": "?"}}}
     subparsers["package"] = {
-        "help": "Get a list of all packages' names and IDs, or the package "
-                "XML.",
+        "help": "List of all packages, or search for an individual package.",
         "func": create_search_func(j.Package),
-        "args": {"search": {"help": "ID or name of package to retrieve.",
+        "args": {"search": {"help": "ID or name of package.",
                             "default": "",
                             "nargs": "?"}}}
     subparsers["policy"] = {
-        "help": "Get a list of all policies' names and IDs, or the policy "
-                "XML.",
+        "help": "List all policies, or search for an individual policy.",
         "func": create_search_func(j.Policy),
-        "args": {"search": {"help": "ID or name of policy to retrieve.",
+        "args": {"search": {"help": "ID or name of policy.",
                             "default": "",
                             "nargs": "?"}}}
-    subparsers["policies_with_group"] = {
-        "help": "Lists all policies scoped to provided group.",
+    subparsers["scoped"] = {
+        "help": "List all policies scoped to a computer group.",
         "func": get_group_policies,
-        "args": {"group": {"help": "Group name to query."}}}
-    subparsers["policies_with_package"] = {
+        "args": {"group": {"help": "ID or name of a computer group."}}}
+    subparsers["installs"] = {
         "help": "Lists all policies which install a package.",
         "func": get_package_policies,
-        "args": {"package": {"help": "Package name or ID to query."}}}
-    subparsers["group_policy_diff"] = {
-        "help": "Lists all policies scoped to two provided groups, "
-                "highlighting the differences.",
+        "args": {"package": {"help": "ID or name of a package."}}}
+    subparsers["scope_diff"] = {
+        "help": "Show the difference between two groups' scoped policies.",
         "func": get_group_policy_diff,
-        "args": {"group1": {"help": "Group name to query."},
-                 "group2": {"help": "Group name to query."}}}
+        "args": {"group1": {"help": "ID or name of first group."},
+                 "group2": {"help": "ID or name of second group."}}}
     subparsers["category"] = {
-        "help": "Get a list of all categories' names and IDs.",
+        "help": "List all categories, or search for an individual category.",
         "func": create_search_func(j.Category),
-        "args": {"search": {"help": "ID or name of category to retrieve.",
+        "args": {"search": {"help": "ID or name of category.",
                             "default": "",
                             "nargs": "?"}}}
     subparsers["md"] = {
-        "help": "Get a list of mobile devices, or find one by ID.",
+        "help": "List all mobile devices, or search for an indvidual mobile "
+                "device.",
         "func": create_search_func(j.MobileDevice),
-        "args": {"search": {"help": "ID or name of mobile device to retrieve.",
+        "args": {"search": {"help": "ID or name of mobile device.",
                             "default": "",
                             "nargs": "?"}}}
     subparsers["md_group"] = {
-        "help": "Get a list of mobile device groups, or find one by ID.",
+        "help": "List all mobile device groups, or search for an individual "
+                "mobile device group.",
         "func": create_search_func(j.MobileDeviceGroup),
-        "args": {"search": {"help": "ID or name of mobile device group to "
-                                    "retrieve.",
+        "args": {"search": {"help": "ID or name of mobile device group.",
                             "default": "",
                             "nargs": "?"}}}
     subparsers["md_configp"] = {
-        "help": "Get a list of mobile device configuration profiles, or find "
-                "one by ID, ",
+        "help": "List all mobile device configuration profiles, or search for "
+                "an individual mobile device configuration profile.",
         "func": create_search_func(j.MobileDeviceConfigurationProfile),
         "args": {"search": {"help": "ID or name of mobile device configuration"
-                                    " profile to retrieve.",
+                                    " profile.",
                             "default": "",
                             "nargs": "?"}}}
-    subparsers["md_configp_by_group"] = {
-        "help": "Lists all mobile configuration profiles scoped to provided "
-                "group.",
+    subparsers["mdscoped"] = {
+        "help": "List all mobile device configuration profiles scoped to a "
+                "mobile device group.",
         "func": get_md_configp_group,
-        "args": {"group": {"help": "Group name to query."}}}
-    subparsers["md_configp_diff"] = {
-        "help": "Lists the differences between all mobile configuration "
-                "profiles scoped to the provided groups.",
+        "args": {"group": {"help": "ID or name of a mobile device group."}}}
+    subparsers["md_scope_diff"] = {
+        "help": "Show the differences between two mobile device groups' "
+                "scoped mobile device configuration profiles.",
         "func": get_md_configp_diff,
-        "args": {"group1": {"help": "Group name to query."},
-                 "group2": {"help": "Group name to query."}}}
+        "args": {"group1": {"help": "ID or name of first group."},
+                 "group2": {"help": "ID or name of second group."}}}
 
     for command in subparsers:
-        sub = subparser.add_parser(command, help=subparsers[command]["help"])
+        sub = subparser.add_parser(command, help=subparsers[command]["help"],
+                                   description=subparsers[command]["help"])
         for arg in subparsers[command]["args"]:
             sub.add_argument(arg, **subparsers[command]["args"][arg])
         sub.set_defaults(func=subparsers[command]["func"])
@@ -444,9 +442,10 @@ def build_argument_parser(j):
 
     # Batch Scope
     arg_help = "Scope a list of policies to a group."
-    batch_scope_subparser = subparser.add_parser("batch_scope", help=arg_help)
-    batch_scope_subparser.add_argument("group", help="Name of group to scope "
-                                       "policies.")
+    batch_scope_subparser = subparser.add_parser(
+        "batch_scope", help=arg_help, description=arg_help)
+    batch_scope_subparser.add_argument(
+        "group", help="Name of group to scope policies.")
     arg_help = "A space delimited list of policy IDs."
     batch_scope_subparser.add_argument("policies", help=arg_help, nargs="*")
     batch_scope_subparser.set_defaults(func=batch_scope)
@@ -454,13 +453,18 @@ def build_argument_parser(j):
     # Promote
     arg_help = ("Promote a package from development to production by updating "
                 "an existing production policy with a newer package.")
-    promote_subparser = subparser.add_parser("promote", help=arg_help)
+    promote_subparser = subparser.add_parser(
+        "promote", help=arg_help, description=arg_help)
     promote_subparser.add_argument("old_package", help="Package name or ID.")
     promote_subparser.add_argument("new_package", help="Package name or ID.")
     promote_subparser.add_argument("policy", help="Policy name or ID.")
-    arg_help = ("If policy name includes a package version number, update it "
-                "with the new version number.")
-    promote_subparser.add_argument("--update-version-in-name", help=arg_help,
+    arg_help = ("Update the package version number in the policy's name. "
+                "Policy name must adhere to this format: "
+                "'PolicyName-<version>'. At this time, only numeric versions "
+                "are supported. e.g.: 'jss_helper promote Nethack-3.4.3 "
+                " Nethack-3.4.4 \"Install Nethack-3.4.3\"' will result in "
+                " the policy name: 'Install Nethack-3.4.4'")
+    promote_subparser.add_argument("--update-name", help=arg_help,
                                    action="store_true")
     promote_subparser.set_defaults(func=promote)
 
