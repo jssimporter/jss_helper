@@ -358,25 +358,25 @@ def build_argument_parser(j):
         "help": "List all computers, or search for an individual computer.",
         "func": create_search_func(j.Computer),
         "args": {"search": {"help": "ID or name of computer.",
-                            "default": "",
+                            "default": None,
                             "nargs": "?"}}}
     subparsers["group"] = {
         "help": "List all computer groups, or search for an individual group.",
         "func": create_search_func(j.ComputerGroup),
         "args": {"search": {"help": "ID or name of computer group.",
-                            "default": "",
+                            "default": None,
                             "nargs": "?"}}}
     subparsers["package"] = {
         "help": "List of all packages, or search for an individual package.",
         "func": create_search_func(j.Package),
         "args": {"search": {"help": "ID or name of package.",
-                            "default": "",
+                            "default": None,
                             "nargs": "?"}}}
     subparsers["policy"] = {
         "help": "List all policies, or search for an individual policy.",
         "func": create_search_func(j.Policy),
         "args": {"search": {"help": "ID or name of policy.",
-                            "default": "",
+                            "default": None,
                             "nargs": "?"}}}
     subparsers["scoped"] = {
         "help": "List all policies scoped to a computer group.",
@@ -395,21 +395,21 @@ def build_argument_parser(j):
         "help": "List all categories, or search for an individual category.",
         "func": create_search_func(j.Category),
         "args": {"search": {"help": "ID or name of category.",
-                            "default": "",
+                            "default": None,
                             "nargs": "?"}}}
     subparsers["md"] = {
         "help": "List all mobile devices, or search for an indvidual mobile "
                 "device.",
         "func": create_search_func(j.MobileDevice),
         "args": {"search": {"help": "ID or name of mobile device.",
-                            "default": "",
+                            "default": None,
                             "nargs": "?"}}}
     subparsers["md_group"] = {
         "help": "List all mobile device groups, or search for an individual "
                 "mobile device group.",
         "func": create_search_func(j.MobileDeviceGroup),
         "args": {"search": {"help": "ID or name of mobile device group.",
-                            "default": "",
+                            "default": None,
                             "nargs": "?"}}}
     subparsers["md_configp"] = {
         "help": "List all mobile device configuration profiles, or search for "
@@ -417,7 +417,7 @@ def build_argument_parser(j):
         "func": create_search_func(j.MobileDeviceConfigurationProfile),
         "args": {"search": {"help": "ID or name of mobile device configuration"
                                     " profile.",
-                            "default": "",
+                            "default": None,
                             "nargs": "?"}}}
     subparsers["mdscoped"] = {
         "help": "List all mobile device configuration profiles scoped to a "
@@ -455,7 +455,8 @@ def build_argument_parser(j):
                 "an existing production policy with a newer package.")
     promote_subparser = subparser.add_parser(
         "promote", help=arg_help, description=arg_help)
-    promote_subparser.add_argument("old_package", help="Package name or ID.")
+    promote_subparser.add_argument("old_package", help="Package name or ID.",
+                                   nargs="?")
     promote_subparser.add_argument("new_package", help="Package name or ID.")
     promote_subparser.add_argument("policy", help="Policy name or ID.")
     arg_help = ("Update the package version number in the policy's name. "
@@ -482,14 +483,11 @@ def create_search_func(obj_method):
     # pylint: disable=unused-argument
     def search_func(j, args):
         """Searches JSS for all objects OR a specific object."""
-        if args.search:
-            try:
-                results = obj_method(args.search)
-            except jss.JSSGetError:
-                print "Object: %s does not exist!" % args.search
-                sys.exit(1)
-        else:
-            results = obj_method()
+        try:
+            results = obj_method(args.search)
+        except jss.JSSGetError:
+            print "Object: %s does not exist!" % args.search
+            sys.exit(1)
         print_object(results)
     # pylint: enable=unused-argument
 
