@@ -1,24 +1,77 @@
 #!/usr/bin/env python
+# Copyright (C) 2014-2015 Shea G Craig <shea.craig@da.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 """jss_helper
 
-Command line utility using jss.py
+Perform queries of objects on a JAMF Software Server.
 
-Copyright (C) 2014 Shea G Craig <shea.craig@da.org>
+Requires: python-jss.
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+usage: jss_helper [-h] [-v] [--ssl]
+                  {category,group_policy_diff,group,package,
+                  policies_with_group,policies_with_package,md,computer,
+                  md_configp_diff,md_configp,policy,md_group,
+                  md_configp_by_group,batch_scope,promote}
+                  ...
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+Query the JSS.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+positional arguments:
+  {category,group_policy_diff,group,package,policies_with_group,
+  policies_with_package,md,computer,md_configp_diff,md_configp,policy,
+  md_group,md_configp_by_group,batch_scope,promote}
 
+    category            Get a list of all categories' names and IDs.
+    group_policy_diff   Lists all policies scoped to two provided
+                        groups, highlighting the differences.
+    group               Get a list of all computer groups, or an
+                        individual group.
+    package             Get a list of all packages' names and IDs, or
+                        the package XML.
+    policies_with_group
+                        Lists all policies scoped to provided group.
+    policies_with_package
+                        Lists all policies which install a package.
+    md                  Get a list of mobile devices, or find one by ID.
+    computer            Get a list of all computers, or an individual
+                        computer.
+    md_configp_diff     Lists the differences between all mobile
+                        configuration profiles scoped to the provided
+                        groups.
+    md_configp          Get a list of mobile device configuration
+                        profiles, or find one by ID,
+    policy              Get a list of all policies' names and IDs, or
+                        the policy XML.
+    md_group            Get a list of mobile device groups, or find one
+                        by ID.
+    md_configp_by_group
+                        Lists all mobile configuration profiles scoped
+                        to provided group.
+    batch_scope         Scope a list of policies to a group.
+    promote             Promote a package from development to production
+                        by updating an existing production policy with a
+                        newer package.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v                    Verbose output.
+  --ssl                 Use SSL verification
 """
+
 
 import argparse
 from distutils.version import StrictVersion
@@ -43,14 +96,11 @@ def print_object(objs):
     """
     # TODO(Shea): Refactor into build_results_string.
     if isinstance(objs, list):
-        #for obj in objs:
-        #    print "ID: %s\t\tNAME: %s" % (obj.id, obj.name)
         width = max([int(len(str(obj.id))) for obj in objs])
         results = []
         for obj in objs:
             results.append(u"ID: {:>{width}}\tNAME: {}".format(
                 obj.id, obj.name, width=width))
-                #obj.id, obj.name.encode("utf8"), width=width))
         print "\n".join(results)
     else:
         print objs
@@ -144,7 +194,7 @@ def batch_scope(j, args):
 
 
 def get_md_configp_group(j, args):
-    """Find all mobile device configuration profiles scoped to a group."""
+    """Find all mobile device config profiles scoped to a group."""
     search = "scope/mobile_device_groups/mobile_device_group"
     configps = j.MobileDeviceConfigurationProfile()
     group = j.MobileDeviceGroup(args.group)
@@ -169,8 +219,8 @@ def get_group_policy_diff(j, args):
     results1 = find_object_in_containers(group1, search, policies)
     results2 = find_object_in_containers(group2, search, policies)
 
-    # I tried to do this with the tempfile module, but the files always ended
-    # up being size 0 and dissappearing, despite delete=False.
+    # I tried to do this with the tempfile module, but the files always
+    # ended up being size 0 and dissappearing, despite delete=False.
     with open("/tmp/file1", mode="w") as file1:
         output = build_results_string("Policies", group1.name, results1)
         # Add a newline to keep diff from complaining.
@@ -182,10 +232,11 @@ def get_group_policy_diff(j, args):
         file2.write(output + "\n")
         file2_name = file2.name
 
-    # Diff will return 1 if files differ, so we have to catch that error.
+    # Diff will return 1 if files differ, so we have to catch that
+    # error.
     try:
-        result = subprocess.check_output(["diff", "-dy", file1_name,
-                                          file2_name])
+        result = subprocess.check_output(
+            ["diff", "-dy", file1_name, file2_name])
     except subprocess.CalledProcessError as err:
         result = err.output
 
@@ -195,8 +246,8 @@ def get_group_policy_diff(j, args):
 def promote(j, args):
     """Replace a package in a policy with another package.
 
-    Designed with the intention of facilitating promotion from development
-    to production of a package.
+    Designed with the intention of facilitating promotion from
+    development to production of a package.
     """
     old_package = j.Package(args.old_package)
     new_package = j.Package(args.new_package)
@@ -206,9 +257,10 @@ def promote(j, args):
     policy.add_package(new_package)
     # This is probably super situational for my organization...
     # Looks for the version number at the end of the name of the policy
-    # (doesn't support anything but numbers and dots) and tries to sub it with
-    # a version number from the package's name. I name all of our packages to
-    # include the version number, so this works for me.
+    # (doesn't support anything but numbers and dots) and tries to sub
+    # it with
+    # a version number from the package's name. I name all of our
+    # packages to include the version number, so this works for me.
     if args.update_version_in_name:
         policy_name_element = policy.find("general/name")
         old_version = re.search(r"[\s\-]([0-9.]+)$",
@@ -252,10 +304,11 @@ def get_md_configp_diff(j, args):
         file2.write(output + "\n")
         file2_name = file2.name
 
-    # Diff will return 1 if files differ, so we have to catch that error.
+    # Diff will return 1 if files differ, so we have to catch that
+    # error.
     try:
-        result = subprocess.check_output(["diff", "-dy", file1_name,
-                                          file2_name])
+        result = subprocess.check_output(
+            ["diff", "-dy", file1_name, file2_name])
     except subprocess.CalledProcessError as err:
         result = err.output
 
