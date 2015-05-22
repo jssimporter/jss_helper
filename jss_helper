@@ -92,7 +92,7 @@ def print_object(objs):
     Prints formatted lists of ID/NAME or the XML for an object.
 
     Args:
-        objs: List of JSSObjects.
+        objs: List of JSSObjects or a JSSObject.
     """
     # TODO(Shea): Refactor into build_results_string.
     if isinstance(objs, list):
@@ -110,7 +110,7 @@ def build_results_string(obj_type, search, results):
     """Format a list of results for output reporting.
 
     Args:
-        type: String name of type to use as a header.
+        obj_type: String name of type to use as a header.
         search: String name of the object matched.
         results: An iterable of match tuples, of (int ID, str name).
 
@@ -131,7 +131,12 @@ def build_results_string(obj_type, search, results):
 
 
 def get_group_policies(j, args):
-    """Find all policies scoped to a group."""
+    """Print all policies scoped to a group.
+
+    Args:
+        args: argparser args with properties:
+            group: Name or ID of computer group.
+    """
     search = "scope/computer_groups/computer_group"
     policies = j.Policy()
     group = j.ComputerGroup(args.group)
@@ -141,7 +146,12 @@ def get_group_policies(j, args):
 
 
 def get_package_policies(j, args):
-    """Find all policies which install a package."""
+    """Print all policies which install a package.
+
+    Args:
+        args: argparser args with properties:
+            package: Name or ID of package.
+    """
     search = "package_configuration/packages/package"
     policies = j.Policy()
     package = j.Package(args.package)
@@ -163,7 +173,7 @@ def find_object_in_containers(search_object, search_path, containers):
             search object.
         containers: List of JSSObjects to check.
 
-    Returns: A list of objects which match.
+    Returns: A list of tuples (object's ID, object's name) which match.
     """
     results = []
     full_objects = containers.retrieve_all()
@@ -194,7 +204,12 @@ def batch_scope(j, args):
 
 
 def get_md_configp_group(j, args):
-    """Find all mobile device config profiles scoped to a group."""
+    """Print all mobile device config profiles scoped to a group.
+
+    Args:
+        args: argparser args with properties:
+            group: Name or ID of group.
+    """
     search = "scope/mobile_device_groups/mobile_device_group"
     configps = j.MobileDeviceConfigurationProfile()
     group = j.MobileDeviceGroup(args.group)
@@ -204,7 +219,7 @@ def get_md_configp_group(j, args):
 
 
 def get_group_policy_diff(j, args):
-    """Find and diff all of the policies scoped to two different groups.
+    """Print a diff of all policies scoped to two different groups.
 
     Args:
         args: argparser args with properties:
@@ -248,6 +263,12 @@ def promote(j, args):
 
     Designed with the intention of facilitating promotion from
     development to production of a package.
+
+    Args:
+        args: argparser args with properties:
+            old_package: ID or name of package to be replaced.
+            new_package: ID or name of package to replace with.
+            policy: Name or ID of policy.
     """
     old_package = j.Package(args.old_package)
     new_package = j.Package(args.new_package)
@@ -277,7 +298,7 @@ def promote(j, args):
 
 
 def get_md_configp_diff(j, args):
-    """Find and diff all configuration profiles scoped to two groups.
+    """Print a diff of all configuration profiles scoped to two groups.
 
     Args:
         args: argparser args with properties:
@@ -447,7 +468,12 @@ def build_argument_parser(j):
 
 
 def create_search_func(obj_method):
-    """Generates a function to perform basic list and xml queries."""
+    """Generates a function to perform basic list and xml queries.
+
+    Args:
+        args: argparser args with properties:
+            search: Name or ID of object to search for.
+    """
     # TODO(Shea): Make the search term be an optional, repeatable arg.
     # pylint: disable=unused-argument
     def search_func(j, args):
@@ -468,7 +494,6 @@ def create_search_func(obj_method):
 
 def main():
     """Run as a cli command."""
-
     # Ensure we have the right version of python-jss
     try:
         python_jss_version = StrictVersion(jss.__version__)
