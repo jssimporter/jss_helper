@@ -16,11 +16,12 @@ This release changes the names of verbs and simplifies the arguments for running
 ### Changed
 
 - Improved output formatting.
-- Renamed many of the commands to make more sense.
+- Renamed many of the commands and arguments to make more sense.
 - Restructured and Refactored for elegance.
 - Every command should now accept name or ID for arguments.
 - Actions that previously took an "--id" argument no longer need the "--id".
 	- e.g. ```jss_helper policy "Install Nethack"```
+- ```promote``` subcommand now allows for interactively selecting arguments.
 
 ## [1.0.0] - 2014-08-14 - Blaster Master
 
