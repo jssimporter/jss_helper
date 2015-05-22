@@ -181,13 +181,13 @@ def batch_scope(j, args):
     Args:
         args: argparser args with properties:
             group: Name or ID of computer group.
-            policies: List of type int ID's of policies to scope.
+            policies: List of ID's or names of policies to scope.
     """
     group = j.ComputerGroup(args.group)
     print "Scoping to group: %s" % group.name
     print 79 * "-"
     for policy_query in args.policies:
-        policy = j.Policy(int(policy_query))
+        policy = j.Policy(policy_query)
         policy.add_object_to_scope(group)
         policy.save()
         print "%s: Success." % policy.name
