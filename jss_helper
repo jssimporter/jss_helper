@@ -156,7 +156,7 @@ def find_object_in_containers(search_object, search_path, containers):
     return results
 
 
-def prompt_user(options):
+def prompt_user(options, current=None):
     """Ask user a question based on configured values.
 
     Args:
@@ -174,23 +174,20 @@ def prompt_user(options):
     #else:
     #print_heading("%s Menu" % self.heading)
     #self.display_options_list(self.options, default=self.default)
-    display_options_list(options)
+    display_options_list(options, current=current)
 
     #print "\nHit enter to accept default choice."
     print "Enter a number to select from list."
-    #print "Create a new %s by entering name/path.\n" % self.heading
-    #choice = raw_input("Please choose a %s: (DEFAULT \'%s\') " %
-    #                    (self.heading, self.default))
-    choice = raw_input("Please choose an object: ")
-
-    if choice.isdigit() and in_range(int(choice), len(options)):
-        result = options[int(choice)]
-    elif choice.isdigit() and not in_range(int(choice), len(options)):
-        #raise ChoiceError("Invalid Choice.")
-        raise Exception("Invalid Choice.")
-    else:
-        # User provided a new object value.
-        result = choice
+    result = None
+    while not result:
+        choice = raw_input("Please choose an object: ")
+        if choice.isdigit() and in_range(int(choice), len(options)):
+            result = options[int(choice)]
+        elif choice.isdigit() and not in_range(int(choice), len(options)):
+            print "Invalid choice!"
+        else:
+            # User provided a new object value.
+            result = choice
 
     return result
 
@@ -200,7 +197,7 @@ def in_range(val, size):
     return val < size and val >= 0
 
 
-def display_options_list(options, default=None):
+def display_options_list(options, current=None, default=None):
     """Prints options in columns as a numbered list.
 
     Args:
@@ -208,7 +205,9 @@ def display_options_list(options, default=None):
             columns.
         default: String value to mark as a default.
     """
-    if default in options:
+    if current and current in options:
+        options[options.index(current)] += " (CURRENT)"
+    if default and default in options:
         options[options.index(default)] += " (DEFAULT)"
 
     # Figure out the length of the option number so we can justify.
@@ -528,29 +527,44 @@ def promote(j, args):
     Designed with the intention of facilitating promotion from
     development to production of a package.
 
+    If any arg is missing, an interactive menu will be displayed.
+
     Args:
         args: argparser args with properties:
-            old_package: ID or name of package to be replaced.
-            new_package: ID or name of package to replace with.
+            new_package: ID or name of package to install.
             policy: Name or ID of policy.
+            update_name: Will update the policy name with the new
+                package name (minus the extension). e.g. "Install
+                NetHack-3.4.3" will result in "Install NetHack-3.4.4".
+
+                The policy name must conclude with the package name
+                (minus the extension), and the package name must follow
+                the format: "<Product>-<version>.[pkg|zip|dmg]"
     """
     if args.policy:
         policy = j.Policy(args.policy)
     else:
         options = [policy.name for policy in j.Policy()]
         policy = j.Policy(prompt_user(options))
-    # TODO: Document that old package is for safety reasons. Maybe remove.
-    if args.old_package:
-        old_package = j.Package(args.old_package)
-    else:
-        options = [package.name for package in j.Package()]
-        old_package = j.Package(prompt_user(options))
+
+    current_package = policy.findtext(
+        "package_configuration/packages/package/name")
+    match = re.search(r"([a-zA-Z0-9]+)[\s\-]([0-9.]+[a-zA-Z]*)$",
+                      current_package)
+    current_package_basename = match.group(1)
+    current_package_version = match.group(2)
+    print current_package_basename, current_package_version
+    #if args.old_package:
+    #    old_package = j.Package(args.old_package)
+    #else:
+    #    options = [package.name for package in j.Package()]
+    #    old_package = j.Package(prompt_user(options))
 
     if args.new_package:
         new_package = j.Package(args.new_package)
     else:
-        options = [package.name for package in j.Package()]
-        new_package = j.Package(prompt_user(options))
+        options = [package.name for package in j.Package() if package.name.startswith(current_package_basename)]
+        new_package = j.Package(prompt_user(options, current=current_package))
 
     package_config = policy.find("package_configuration/packages")
     policy.remove_object_from_list(old_package, package_config)
