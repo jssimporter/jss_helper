@@ -85,6 +85,7 @@ import jss
 __version__ = "1.0.1"
 REQUIRED_PYTHON_JSS_VERSION = StrictVersion("0.3.4")
 
+# Utility Functions
 
 def print_object(objs):
     """Flexible print method for lists and XML.
@@ -130,36 +131,6 @@ def build_results_string(obj_type, search, results):
     return output_string
 
 
-def get_group_policies(j, args):
-    """Print all policies scoped to a group.
-
-    Args:
-        args: argparser args with properties:
-            group: Name or ID of computer group.
-    """
-    search = "scope/computer_groups/computer_group"
-    policies = j.Policy()
-    group = j.ComputerGroup(args.group)
-    results = find_object_in_containers(group, search, policies)
-    output = build_results_string("Policies", group.name, results)
-    print output
-
-
-def get_package_policies(j, args):
-    """Print all policies which install a package.
-
-    Args:
-        args: argparser args with properties:
-            package: Name or ID of package.
-    """
-    search = "package_configuration/packages/package"
-    policies = j.Policy()
-    package = j.Package(args.package)
-    results = find_object_in_containers(package, search, policies)
-    output = build_results_string("Policies", package.name, results)
-    print output
-
-
 def find_object_in_containers(search_object, search_path, containers):
     """Get all container objects which contain a reference to an object.
 
@@ -183,134 +154,6 @@ def find_object_in_containers(search_object, search_path, containers):
                     element.findtext("name") == search_object.name):
                 results.append((obj.id, obj.name))
     return results
-
-
-def batch_scope(j, args):
-    """Scope a list of policies to a computer group.
-
-    Args:
-        args: argparser args with properties:
-            group: Name or ID of computer group.
-            policies: List of ID's or names of policies to scope.
-    """
-    group = j.ComputerGroup(args.group)
-    print "Scoping to group: %s" % group.name
-    print 79 * "-"
-    for policy_query in args.policies:
-        policy = j.Policy(policy_query)
-        policy.add_object_to_scope(group)
-        policy.save()
-        print "%s: Success." % policy.name
-
-
-def get_md_configp_group(j, args):
-    """Print all mobile device config profiles scoped to a group.
-
-    Args:
-        args: argparser args with properties:
-            group: Name or ID of group.
-    """
-    search = "scope/mobile_device_groups/mobile_device_group"
-    configps = j.MobileDeviceConfigurationProfile()
-    group = j.MobileDeviceGroup(args.group)
-    results = find_object_in_containers(group, search, configps)
-    output = build_results_string("Profiles", args.group, results)
-    print output
-
-
-def get_group_policy_diff(j, args):
-    """Print a diff of all policies scoped to two different groups.
-
-    Args:
-        args: argparser args with properties:
-            group1: Name or ID of first computer group.
-            group2: Name or ID of second computer group.
-    """
-    search = "scope/computer_groups/computer_group"
-    policies = j.Policy()
-    policies.sort()
-    group1 = j.ComputerGroup(args.group1)
-    group2 = j.ComputerGroup(args.group2)
-    results1 = find_object_in_containers(group1, search, policies)
-    results2 = find_object_in_containers(group2, search, policies)
-
-    # I tried to do this with the tempfile module, but the files always
-    # ended up being size 0 and dissappearing, despite delete=False.
-    with open("/tmp/file1", mode="w") as file1:
-        output = build_results_string("Policies", group1.name, results1)
-        # Add a newline to keep diff from complaining.
-        file1.write(output + "\n")
-        file1_name = file1.name
-    with open("/tmp/file2", mode="w") as file2:
-        output = build_results_string("Policies", group2.name, results2)
-        # Add a newline to keep diff from complaining.
-        file2.write(output + "\n")
-        file2_name = file2.name
-
-    # Diff will return 1 if files differ, so we have to catch that
-    # error.
-    try:
-        result = subprocess.check_output(
-            ["diff", "-dy", file1_name, file2_name])
-    except subprocess.CalledProcessError as err:
-        result = err.output
-
-    print result
-
-
-def promote(j, args):
-    """Replace a package in a policy with another package.
-
-    Designed with the intention of facilitating promotion from
-    development to production of a package.
-
-    Args:
-        args: argparser args with properties:
-            old_package: ID or name of package to be replaced.
-            new_package: ID or name of package to replace with.
-            policy: Name or ID of policy.
-    """
-    if args.policy:
-        policy = j.Policy(args.policy)
-    else:
-        options = [policy.name for policy in j.Policy()]
-        policy = j.Policy(prompt_user(options))
-    # TODO: Document that old package is for safety reasons. Maybe remove.
-    if args.old_package:
-        old_package = j.Package(args.old_package)
-    else:
-        options = [package.name for package in j.Package()]
-        old_package = j.Package(prompt_user(options))
-
-    if args.new_package:
-        new_package = j.Package(args.new_package)
-    else:
-        options = [package.name for package in j.Package()]
-        new_package = j.Package(prompt_user(options))
-
-    package_config = policy.find("package_configuration/packages")
-    policy.remove_object_from_list(old_package, package_config)
-    policy.add_package(new_package)
-    # This is probably super situational for my organization...
-    # Looks for the version number at the end of the name of the policy
-    # (doesn't support anything but numbers and dots) and tries to sub
-    # it with
-    # a version number from the package's name. I name all of our
-    # packages to include the version number, so this works for me.
-    if args.update_name:
-        policy_name_element = policy.find("general/name")
-        old_version = re.search(r"[\s\-]([0-9.]+)$",
-                                policy_name_element.text).group(1)
-        new_version = re.search(r"([0-9.]*[0-9]+)\.pkg$",
-                                new_package.name).group(1)
-        print old_version, new_version
-        name = policy_name_element.text
-        print "Old name: %s" % name
-        name = name.replace(old_version, new_version)
-        print "New name: %s" % name
-        policy_name_element.text = name
-    print policy
-    #policy.save()
 
 
 def prompt_user(options):
@@ -357,7 +200,7 @@ def in_range(val, size):
     return val < size and val >= 0
 
 
-def display_options_list(options):
+def display_options_list(options, default=None):
     """Prints options in columns as a numbered list.
 
     Args:
@@ -365,54 +208,15 @@ def display_options_list(options):
             columns.
         default: String value to mark as a default.
     """
-    # We're not afraid of zero-indexed lists!
-#    if default in options:
-#        options[options.index(default)] += " (DEFAULT)"
-#
-    # Get the length of the longest index number, plus an indent.
-    length = len(str(len(options))) + 4
-    fmt_string = "{0[0]:>{length}}: {0[1]}"
-    choices = "\n".join([fmt_string.format(option, length=length) for
-                            option in enumerate(options)])
+    if default in options:
+        options[options.index(default)] += " (DEFAULT)"
+
+    # Figure out the length of the option number so we can justify.
+    length = len(str(len(options))) + len("\t")
+    fmt_string = u"{0[0]:>{length}}: {0[1]}"
+    choices = "\n".join([fmt_string.format(option, length=length) for option in
+                         enumerate(options)])
     print choices
-
-def get_md_configp_diff(j, args):
-    """Print a diff of all configuration profiles scoped to two groups.
-
-    Args:
-        args: argparser args with properties:
-            group1: Name or ID of first group.
-            group2: Name or ID of second group.
-    """
-    search = "scope/mobile_device_groups/mobile_device_group"
-    profiles = j.MobileDeviceConfigurationProfile()
-    group1 = j.MobileDeviceGroup(args.group1)
-    group2 = j.MobileDeviceGroup(args.group2)
-    results1 = find_object_in_containers(group1, search, profiles)
-    results2 = find_object_in_containers(group2, search, profiles)
-
-    # I tried to do this with the tempfile module, but the files always
-    # ended up being size 0 and dissappearing, despite delete=False.
-    with open("/tmp/file1_name", mode="w") as file1:
-        output = build_results_string("Profiles", group1.name, results1)
-        # Add a newline to keep diff from complaining.
-        file1.write(output + "\n")
-        file1_name = file1.name
-    with open("/tmp/file2_name", mode="w") as file2:
-        output = build_results_string("Profiles", group2.name, results2)
-        # Add a newline to keep diff from complaining.
-        file2.write(output + "\n")
-        file2_name = file2.name
-
-    # Diff will return 1 if files differ, so we have to catch that
-    # error.
-    try:
-        result = subprocess.check_output(
-            ["diff", "-dy", file1_name, file2_name])
-    except subprocess.CalledProcessError as err:
-        result = err.output
-
-    print result
 
 
 def build_argument_parser(j):
@@ -573,6 +377,204 @@ def create_search_func(obj_method):
     # pylint: enable=unused-argument
 
     return search_func
+
+
+# Actions
+def get_group_policies(j, args):
+    """Print all policies scoped to a group.
+
+    Args:
+        args: argparser args with properties:
+            group: Name or ID of computer group.
+    """
+    search = "scope/computer_groups/computer_group"
+    policies = j.Policy()
+    group = j.ComputerGroup(args.group)
+    results = find_object_in_containers(group, search, policies)
+    output = build_results_string("Policies", group.name, results)
+    print output
+
+
+def get_package_policies(j, args):
+    """Print all policies which install a package.
+
+    Args:
+        args: argparser args with properties:
+            package: Name or ID of package.
+    """
+    search = "package_configuration/packages/package"
+    policies = j.Policy()
+    package = j.Package(args.package)
+    results = find_object_in_containers(package, search, policies)
+    output = build_results_string("Policies", package.name, results)
+    print output
+
+
+def get_md_configp_group(j, args):
+    """Print all mobile device config profiles scoped to a group.
+
+    Args:
+        args: argparser args with properties:
+            group: Name or ID of group.
+    """
+    search = "scope/mobile_device_groups/mobile_device_group"
+    configps = j.MobileDeviceConfigurationProfile()
+    group = j.MobileDeviceGroup(args.group)
+    results = find_object_in_containers(group, search, configps)
+    output = build_results_string("Profiles", args.group, results)
+    print output
+
+
+def get_group_policy_diff(j, args):
+    """Print a diff of all policies scoped to two different groups.
+
+    Args:
+        args: argparser args with properties:
+            group1: Name or ID of first computer group.
+            group2: Name or ID of second computer group.
+    """
+    search = "scope/computer_groups/computer_group"
+    policies = j.Policy()
+    policies.sort()
+    group1 = j.ComputerGroup(args.group1)
+    group2 = j.ComputerGroup(args.group2)
+    results1 = find_object_in_containers(group1, search, policies)
+    results2 = find_object_in_containers(group2, search, policies)
+
+    # I tried to do this with the tempfile module, but the files always
+    # ended up being size 0 and dissappearing, despite delete=False.
+    with open("/tmp/file1", mode="w") as file1:
+        output = build_results_string("Policies", group1.name, results1)
+        # Add a newline to keep diff from complaining.
+        file1.write(output + "\n")
+        file1_name = file1.name
+    with open("/tmp/file2", mode="w") as file2:
+        output = build_results_string("Policies", group2.name, results2)
+        # Add a newline to keep diff from complaining.
+        file2.write(output + "\n")
+        file2_name = file2.name
+
+    # Diff will return 1 if files differ, so we have to catch that
+    # error.
+    try:
+        result = subprocess.check_output(
+            ["diff", "-dy", file1_name, file2_name])
+    except subprocess.CalledProcessError as err:
+        result = err.output
+
+    print result
+
+
+def get_md_configp_diff(j, args):
+    """Print a diff of all configuration profiles scoped to two groups.
+
+    Args:
+        args: argparser args with properties:
+            group1: Name or ID of first group.
+            group2: Name or ID of second group.
+    """
+    search = "scope/mobile_device_groups/mobile_device_group"
+    profiles = j.MobileDeviceConfigurationProfile()
+    group1 = j.MobileDeviceGroup(args.group1)
+    group2 = j.MobileDeviceGroup(args.group2)
+    results1 = find_object_in_containers(group1, search, profiles)
+    results2 = find_object_in_containers(group2, search, profiles)
+
+    # I tried to do this with the tempfile module, but the files always
+    # ended up being size 0 and dissappearing, despite delete=False.
+    with open("/tmp/file1_name", mode="w") as file1:
+        output = build_results_string("Profiles", group1.name, results1)
+        # Add a newline to keep diff from complaining.
+        file1.write(output + "\n")
+        file1_name = file1.name
+    with open("/tmp/file2_name", mode="w") as file2:
+        output = build_results_string("Profiles", group2.name, results2)
+        # Add a newline to keep diff from complaining.
+        file2.write(output + "\n")
+        file2_name = file2.name
+
+    # Diff will return 1 if files differ, so we have to catch that
+    # error.
+    try:
+        result = subprocess.check_output(
+            ["diff", "-dy", file1_name, file2_name])
+    except subprocess.CalledProcessError as err:
+        result = err.output
+
+    print result
+
+
+def batch_scope(j, args):
+    """Scope a list of policies to a computer group.
+
+    Args:
+        args: argparser args with properties:
+            group: Name or ID of computer group.
+            policies: List of ID's or names of policies to scope.
+    """
+    group = j.ComputerGroup(args.group)
+    print "Scoping to group: %s" % group.name
+    print 79 * "-"
+    for policy_query in args.policies:
+        policy = j.Policy(policy_query)
+        policy.add_object_to_scope(group)
+        policy.save()
+        print "%s: Success." % policy.name
+
+
+def promote(j, args):
+    """Replace a package in a policy with another package.
+
+    Designed with the intention of facilitating promotion from
+    development to production of a package.
+
+    Args:
+        args: argparser args with properties:
+            old_package: ID or name of package to be replaced.
+            new_package: ID or name of package to replace with.
+            policy: Name or ID of policy.
+    """
+    if args.policy:
+        policy = j.Policy(args.policy)
+    else:
+        options = [policy.name for policy in j.Policy()]
+        policy = j.Policy(prompt_user(options))
+    # TODO: Document that old package is for safety reasons. Maybe remove.
+    if args.old_package:
+        old_package = j.Package(args.old_package)
+    else:
+        options = [package.name for package in j.Package()]
+        old_package = j.Package(prompt_user(options))
+
+    if args.new_package:
+        new_package = j.Package(args.new_package)
+    else:
+        options = [package.name for package in j.Package()]
+        new_package = j.Package(prompt_user(options))
+
+    package_config = policy.find("package_configuration/packages")
+    policy.remove_object_from_list(old_package, package_config)
+    policy.add_package(new_package)
+    # This is probably super situational for my organization...
+    # Looks for the version number at the end of the name of the policy
+    # (doesn't support anything but numbers and dots) and tries to sub
+    # it with
+    # a version number from the package's name. I name all of our
+    # packages to include the version number, so this works for me.
+    if args.update_name:
+        policy_name_element = policy.find("general/name")
+        old_version = re.search(r"[\s\-]([0-9.]+)$",
+                                policy_name_element.text).group(1)
+        new_version = re.search(r"([0-9.]*[0-9]+)\.pkg$",
+                                new_package.name).group(1)
+        print old_version, new_version
+        name = policy_name_element.text
+        print "Old name: %s" % name
+        name = name.replace(old_version, new_version)
+        print "New name: %s" % name
+        policy_name_element.text = name
+    print policy
+    #policy.save()
 
 
 def main():
