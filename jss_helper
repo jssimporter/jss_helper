@@ -74,7 +74,7 @@ optional arguments:
 
 
 import argparse
-from distutils.version import StrictVersion
+from distutils.version import StrictVersion, LooseVersion
 import re
 import subprocess
 import sys
@@ -175,7 +175,13 @@ def prompt_user(options, expandable=False, flags=[]):
             Value: Function for matching an option. The function
                 must return a bool.
 
-            e.g.: {"CURRENT": lambda f: f == current_package}
+            e.g.: {"CURRENT": lambda f: current_package in f}
+                where "current_package" is a variable with the desired
+                value.
+
+            flags accepts a special key name: "DEFAULT", which will
+            flag an option as a default, which is selectable by the
+            user by simply pressing enter.
 
     Returns:
         The item chosen from the options iterable. Note, this does not
@@ -192,14 +198,16 @@ def prompt_user(options, expandable=False, flags=[]):
 
     display_options_list(flagged_options)
 
-    input_menu_strings = ["\nHit enter to accept default choice.",
-                          "Enter a number to select from list."]
+    # Build the input menu text:
+    input_menu_strings = ["\nEnter a number to select from list."]
     if expandable:
         input_menu_strings.append("Enter 'F' to expand the options list.")
-
+    if "DEFAULT" in flags:
+        input_menu_strings.append("Hit <Enter> to accept default choice.")
     input_menu_strings.append("Please choose an object: ")
     input_string = "\n".join(input_menu_strings)
 
+    # Ask user to select an option until they make a valid choice.
     result = None
     while not result:
         choice = raw_input(input_string)
@@ -209,6 +217,12 @@ def prompt_user(options, expandable=False, flags=[]):
             # User wants the full list.
             display_options_list(expandable)
             options = list(expandable)
+        elif choice == "" and "DEFAULT" in flags:
+            results = filter(flags["DEFAULT"], options)
+            # If there is a result, use it! Otherwise, just repeat the
+            # menu.
+            if results:
+                result = results.pop()
         else:
             print "Invalid choice!"
 
@@ -237,7 +251,7 @@ def display_options_list(options):
     fmt_string = u"{0[0]:>{length}}: {0[1]}"
     choices = "\n".join([fmt_string.format(option, length=length) for option in
                          enumerate(options)])
-    print choices
+    print "\n" + choices
 
 
 def build_argument_parser(j):
@@ -555,13 +569,13 @@ def promote(j, args):
         args: argparser args with properties:
             new_package: ID or name of package to install.
             policy: Name or ID of policy.
-            update_name: Will update the policy name with the new
-                package name (minus the extension). e.g. "Install
-                NetHack-3.4.3" will result in "Install NetHack-3.4.4".
+            update_name: Bool, Will atttempt to update the policy name
+                with the new package name (minus the extension). e.g.
+                "Install NetHack-3.4.3" will result in "Install
+                NetHack-3.4.4".
 
-                The policy name must conclude with the package name
-                (minus the extension), and the package name must follow
-                the format: "<Product>-<version>.[pkg|zip|dmg]"
+                The policy name must include the exact package name,
+                and version number for this to do anything.
     """
     if args.policy:
         policy = j.Policy(args.policy)
@@ -571,10 +585,9 @@ def promote(j, args):
 
     current_package = policy.findtext(
         "package_configuration/packages/package/name")
-    match = re.search(r"([a-zA-Z0-9]+)[\s\-]([0-9.]+[a-zA-Z]*)$",
-                      current_package)
-    current_package_basename = match.group(1)
-    current_package_version = match.group(2)
+    package_regex = r"([a-zA-Z0-9]+)[\s\-]([0-9.]+[a-zA-Z]*).(pkg|dmg|zip)$"
+    match = re.search(package_regex, current_package)
+    current_package_basename, current_package_version = match.group(1, 2)
 
     if args.new_package:
         new_package_name = args.new_package
@@ -584,35 +597,44 @@ def promote(j, args):
         # Build a list of packages with same product name with filter.
         matching_options = filter(lambda f: current_package_basename.upper() in
                                   f.upper(), full_options)
-        flags = {"CURRENT": lambda f: f == current_package}
-        new_package_name = prompt_user(matching_options,
-                                       expandable=full_options, flags=flags)
-        # TODO: Sort by version number, and use the highest number for a
-        # default option. StrictVersion will do this.
+
+        flags = {"CURRENT": lambda f: current_package in f}
+
+        # Find a matching package with the highest version number to
+        # serve as a default.
+        default_options = []
+        for package in matching_options:
+            match = re.search(package_regex, package)
+            if match:
+                name, version = match.group(1, 2)
+                default_options.append(LooseVersion(version))
+        newest = max(default_options)
+        default = [option for option in matching_options if str(newest) in
+                   option]
+        if default:
+            flags["DEFAULT"] = lambda f: default[0] in f
+
+        new_package_name = prompt_user(
+            matching_options, expandable=full_options, flags=flags)
 
     new_package = j.Package(new_package_name)
 
     package_config = policy.find("package_configuration/packages")
     policy.remove_object_from_list(current_package, package_config)
     policy.add_package(new_package)
-    # This is probably super situational for my organization...
-    # Looks for the version number at the end of the name of the policy
-    # (doesn't support anything but numbers and dots) and tries to sub
-    # it with
-    # a version number from the package's name. I name all of our
-    # packages to include the version number, so this works for me.
+    # Try to replace the product name and version in the policy's name
+    # with the new values.
     if args.update_name:
         policy_name_element = policy.find("general/name")
-        old_version = re.search(r"[\s\-]([0-9.]+)$",
-                                policy_name_element.text).group(1)
-        new_version = re.search(r"([0-9.]*[0-9]+)\.pkg$",
-                                new_package.name).group(1)
-        print old_version, new_version
+        new_match = re.search(package_regex, new_package_name)
+        new_package_basename, new_package_version = new_match.group(1, 2)
         name = policy_name_element.text
+        new_name = name.replace(current_package_basename, new_package_basename)
+        new_name = new_name.replace(current_package_version,
+                                    new_package_version)
         print "Old name: %s" % name
-        name = name.replace(old_version, new_version)
-        print "New name: %s" % name
-        policy_name_element.text = name
+        print "New name: %s" % new_name
+        policy_name_element.text = new_name
     print policy
     # TODO: Un-nerf
     #policy.save()
