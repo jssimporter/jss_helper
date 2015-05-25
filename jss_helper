@@ -156,38 +156,61 @@ def find_object_in_containers(search_object, search_path, containers):
     return results
 
 
-def prompt_user(options, current=None):
+def prompt_user(options, expandable=False, flags=[]):
     """Ask user a question based on configured values.
 
     Args:
-        auto: Bool. If True, and a default value has been provided,
-            use that default value.
+        options: Iterable of options to choose from.
+        expandable: Optional iterable of options to choose from, larger
+            than "options". If provided, will add an "F" option to the
+            interactive menu which allows user to expand the possible
+            selections.
+
+            Defaults to an empty list, and will disable
+            the "F" menu option.
+        flags: Dynamically mark some options with extra
+            text. For example, make an option "Default".
+
+            Key: String name of text to append to option in list.
+            Value: Function for matching an option. The function
+                must return a bool.
+
+            e.g.: {"CURRENT": lambda f: f == current_package}
 
     Returns:
-        Dict with key = self.key and val = the user's choice.
-
-    Raises:
-        ChoiceError: User has made an invalid choice.
+        The item chosen from the options iterable. Note, this does not
+        include the flag text if present.
     """
-    #if auto and self.default:
-    #    result = self.default
-    #else:
-    #print_heading("%s Menu" % self.heading)
-    #self.display_options_list(self.options, default=self.default)
-    display_options_list(options, current=current)
+    # Copy list to make sure we don't mutate any values.
+    flagged_options = list(options)
 
-    #print "\nHit enter to accept default choice."
-    print "Enter a number to select from list."
+    # Make a list of matches, then append text to each match.
+    for flag in flags:
+        matches = filter(flags[flag], flagged_options)
+        for match in matches:
+            flagged_options[flagged_options.index(match)] += " (%s)" % flag
+
+    display_options_list(flagged_options)
+
+    input_menu_strings = ["\nHit enter to accept default choice.",
+                          "Enter a number to select from list."]
+    if expandable:
+        input_menu_strings.append("Enter 'F' to expand the options list.")
+
+    input_menu_strings.append("Please choose an object: ")
+    input_string = "\n".join(input_menu_strings)
+
     result = None
     while not result:
-        choice = raw_input("Please choose an object: ")
+        choice = raw_input(input_string)
         if choice.isdigit() and in_range(int(choice), len(options)):
             result = options[int(choice)]
-        elif choice.isdigit() and not in_range(int(choice), len(options)):
-            print "Invalid choice!"
+        elif choice.upper() == "F" and expandable:
+            # User wants the full list.
+            display_options_list(expandable)
+            options = list(expandable)
         else:
-            # User provided a new object value.
-            result = choice
+            print "Invalid choice!"
 
     return result
 
@@ -197,20 +220,19 @@ def in_range(val, size):
     return val < size and val >= 0
 
 
-def display_options_list(options, current=None, default=None):
+def display_options_list(options):
     """Prints options in columns as a numbered list.
+
+    Optionally, flag some options with extra text.
 
     Args:
         options: Iterable of strings to enumerate, and print in
             columns.
-        default: String value to mark as a default.
     """
-    if current and current in options:
-        options[options.index(current)] += " (CURRENT)"
-    if default and default in options:
-        options[options.index(default)] += " (DEFAULT)"
+    # Justify the columns so the option numbers don't push the options
+    # out of a nice left-justified column.
 
-    # Figure out the length of the option number so we can justify.
+    # Figure out the number of options, then the length of that number.
     length = len(str(len(options))) + len("\t")
     fmt_string = u"{0[0]:>{length}}: {0[1]}"
     choices = "\n".join([fmt_string.format(option, length=length) for option in
@@ -553,21 +575,25 @@ def promote(j, args):
                       current_package)
     current_package_basename = match.group(1)
     current_package_version = match.group(2)
-    print current_package_basename, current_package_version
-    #if args.old_package:
-    #    old_package = j.Package(args.old_package)
-    #else:
-    #    options = [package.name for package in j.Package()]
-    #    old_package = j.Package(prompt_user(options))
 
     if args.new_package:
-        new_package = j.Package(args.new_package)
+        new_package_name = args.new_package
     else:
-        options = [package.name for package in j.Package() if package.name.startswith(current_package_basename)]
-        new_package = j.Package(prompt_user(options, current=current_package))
+        # Build a list of ALL packages.
+        full_options = [package.name for package in j.Package()]
+        # Build a list of packages with same product name with filter.
+        matching_options = filter(lambda f: current_package_basename.upper() in
+                                  f.upper(), full_options)
+        flags = {"CURRENT": lambda f: f == current_package}
+        new_package_name = prompt_user(matching_options,
+                                       expandable=full_options, flags=flags)
+        # TODO: Sort by version number, and use the highest number for a
+        # default option. StrictVersion will do this.
+
+    new_package = j.Package(new_package_name)
 
     package_config = policy.find("package_configuration/packages")
-    policy.remove_object_from_list(old_package, package_config)
+    policy.remove_object_from_list(current_package, package_config)
     policy.add_package(new_package)
     # This is probably super situational for my organization...
     # Looks for the version number at the end of the name of the policy
@@ -588,6 +614,7 @@ def promote(j, args):
         print "New name: %s" % name
         policy_name_element.text = name
     print policy
+    # TODO: Un-nerf
     #policy.save()
 
 
