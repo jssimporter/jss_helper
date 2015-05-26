@@ -481,6 +481,22 @@ def get_newest_pkg(options):
     return result
 
 
+def log_warning(policy):
+    """Print warning about flushing the logs if triggers in policy."""
+    if policy.findtext("general/frequency") != "Ongoing":
+        triggers = ["trigger_checkin", "trigger_enrollment_complete",
+                    "trigger_login", "trigger_logout",
+                    "trigger_network_state_changed", "trigger_startup",
+                    "trigger_other"]
+        values = []
+        for trigger in triggers:
+            value = policy.findtext("general/" + trigger)
+            # Value can be string "false" or "" for "trigger_other".
+            if value and not value == "false":
+                print "Remember to flush the policy logs!"
+                break
+
+
 # Actions
 def get_group_policies(j, args):
     """Print all policies scoped to a group.
@@ -683,6 +699,7 @@ def promote(j, args):
     print policy
     # TODO: Un-nerf
     #policy.save()
+    log_warning(policy)
 
 
 def main():

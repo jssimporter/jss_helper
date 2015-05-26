@@ -25,6 +25,7 @@ This release changes the names of verbs and simplifies the arguments for running
 - ```promote``` tries to guess which packages you may want to install (by regex searching for similar package names). You can still see a full list with the interactive "F" command.
 - Now can handle a "-" or a " " (blank space) as delimeters in the policy name for ```--update-name``` purposes.
 - ```promote``` drops the ```old-package``` argument. It was used as a safeguard, but I no longer think that it's needed. If you're running with the ID's, you know what you're doing, and if you're running interactively, you've visually confirmed what you want.
+- ```promote``` now reminds you to flush the policy logs for non-ongoing policies.
 
 ## [1.0.0] - 2014-08-14 - Blaster Master
 
