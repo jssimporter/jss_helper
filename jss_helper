@@ -153,7 +153,7 @@ def find_object_in_containers(search_object, search_path, containers):
     return results
 
 
-def prompt_user(options, expandable=False, flags=[]):
+def prompt_user(options, expandable=False, flags=None):
     """Ask user a question based on configured values.
 
     Args:
@@ -187,11 +187,13 @@ def prompt_user(options, expandable=False, flags=[]):
     # Copy list to make sure we don't mutate any values.
     flagged_options = list(options)
 
-    # Make a list of matches, then append text to each match.
-    for flag in flags:
-        matches = filter(flags[flag], flagged_options)
-        for match in matches:
-            flagged_options[flagged_options.index(match)] += " (%s)" % flag
+    if flags:
+        # Make a list of matches, then append text to each match.
+        for flag in flags:
+            matches = [option for option in flagged_options if
+                       flags[flag](option)]
+            for match in matches:
+                flagged_options[flagged_options.index(match)] += " (%s)" % flag
 
     display_options_list(flagged_options)
 
@@ -199,7 +201,7 @@ def prompt_user(options, expandable=False, flags=[]):
     input_menu_strings = ["\nEnter a number to select from list."]
     if expandable:
         input_menu_strings.append("Enter 'F' to expand the options list.")
-    if "DEFAULT" in flags:
+    if flags and "DEFAULT" in flags:
         input_menu_strings.append("Hit <Enter> to accept default choice.")
     input_menu_strings.append("Please choose an object: ")
     input_string = "\n".join(input_menu_strings)
@@ -214,8 +216,9 @@ def prompt_user(options, expandable=False, flags=[]):
             # User wants the full list.
             display_options_list(expandable)
             options = list(expandable)
-        elif choice == "" and "DEFAULT" in flags:
-            results = filter(flags["DEFAULT"], options)
+        elif choice == "" and flags and "DEFAULT" in flags:
+            results = [option for option in options if
+                       flags["DEFAULT"](option)]
             # If there is a result, use it! Otherwise, just repeat the
             # menu.
             if results:
@@ -591,9 +594,9 @@ def promote(j, args):
     else:
         # Build a list of ALL packages.
         full_options = [package.name for package in j.Package()]
-        # Build a list of packages with same product name with filter.
-        matching_options = filter(lambda f: current_package_basename.upper() in
-                                  f.upper(), full_options)
+        # Build a list of packages with same product name.
+        matching_options = [option for option in full_options if
+                            current_package_basename.upper() in option.upper()]
 
         flags = {"CURRENT": lambda f: current_package in f}
 
@@ -619,6 +622,7 @@ def promote(j, args):
     package_config = policy.find("package_configuration/packages")
     policy.remove_object_from_list(current_package, package_config)
     policy.add_package(new_package)
+
     # Try to replace the product name and version in the policy's name
     # with the new values.
     if args.update_name:
