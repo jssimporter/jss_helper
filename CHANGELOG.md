@@ -22,6 +22,9 @@ This release changes the names of verbs and simplifies the arguments for running
 - Actions that previously took an "--id" argument no longer need the "--id".
 	- e.g. ```jss_helper policy "Install Nethack"```
 - ```promote``` subcommand now allows for interactively selecting arguments.
+- ```promote``` tries to guess which packages you may want to install (by regex searching for similar package names). You can still see a full list with the interactive "F" command.
+- Now can handle a "-" or a " " (blank space) as delimeters in the policy name for ```--update-name``` purposes.
+- ```promote``` drops the ```old-package``` argument. It was used as a safeguard, but I no longer think that it's needed. If you're running with the ID's, you know what you're doing, and if you're running interactively, you've visually confirmed what you want.
 
 ## [1.0.0] - 2014-08-14 - Blaster Master
 

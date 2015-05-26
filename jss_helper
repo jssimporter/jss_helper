@@ -22,45 +22,42 @@ Perform queries of objects on a JAMF Software Server.
 Requires: python-jss.
 
 usage: jss_helper [-h] [-v] [--ssl]
-                  {category,group_policy_diff,group,package,
-                  policies_with_group,policies_with_package,md,computer,
-                  md_configp_diff,md_configp,policy,md_group,
-                  md_configp_by_group,batch_scope,promote}
-                  ...
+                  {category,md,group,md_configp,package,installs,
+                   md_group,scope_diff,computer,md_scope_diff,scoped,
+                   policy,mdscoped,batch_scope,promote}
+                   ...
 
 Query the JSS.
 
 positional arguments:
-  {category,group_policy_diff,group,package,policies_with_group,
-  policies_with_package,md,computer,md_configp_diff,md_configp,policy,
-  md_group,md_configp_by_group,batch_scope,promote}
-
-    category            Get a list of all categories' names and IDs.
-    group_policy_diff   Lists all policies scoped to two provided
-                        groups, highlighting the differences.
-    group               Get a list of all computer groups, or an
+  {category,md,group,md_configp,package,installs,md_group,scope_diff,
+   computer,md_scope_diff,scoped,policy,mdscoped,batch_scope,promote}
+    category            List all categories, or search for an individual
+                        category.
+    md                  List all mobile devices, or search for an
+                        indvidual mobile device.
+    group               List all computer groups, or search for an
                         individual group.
-    package             Get a list of all packages' names and IDs, or
-                        the package XML.
-    policies_with_group
-                        Lists all policies scoped to provided group.
-    policies_with_package
-                        Lists all policies which install a package.
-    md                  Get a list of mobile devices, or find one by ID.
-    computer            Get a list of all computers, or an individual
+    md_configp          List all mobile device configuration profiles,
+                        or search for an individual mobile device
+                        configuration profile.
+    package             List of all packages, or search for an
+                        individual package.
+    installs            Lists all policies which install a package.
+    md_group            List all mobile device groups, or search for an
+                        individual mobile device group.
+    scope_diff          Show the difference between two groups' scoped
+                        policies.
+    computer            List all computers, or search for an individual
                         computer.
-    md_configp_diff     Lists the differences between all mobile
-                        configuration profiles scoped to the provided
-                        groups.
-    md_configp          Get a list of mobile device configuration
-                        profiles, or find one by ID,
-    policy              Get a list of all policies' names and IDs, or
-                        the policy XML.
-    md_group            Get a list of mobile device groups, or find one
-                        by ID.
-    md_configp_by_group
-                        Lists all mobile configuration profiles scoped
-                        to provided group.
+    md_scope_diff       Show the differences between two mobile device
+                        groups' scoped mobile device configuration
+                        profiles.
+    scoped              List all policies scoped to a computer group.
+    policy              List all policies, or search for an individual
+                        policy.
+    mdscoped            List all mobile device configuration profiles
+                        scoped to a mobile device group.
     batch_scope         Scope a list of policies to a group.
     promote             Promote a package from development to production
                         by updating an existing production policy with a
