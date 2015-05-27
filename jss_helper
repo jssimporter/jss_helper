@@ -405,17 +405,17 @@ def build_argument_parser(j):
         "promote", help=arg_help, description=arg_help)
     promote_subparser.add_argument("policy", help="Policy name or ID.",
                                    nargs="?", default=None)
-    promote_subparser.add_argument("old_package", help="Package name or ID.",
-                                   nargs="?", default=None)
     promote_subparser.add_argument("new_package", help="Package name or ID.",
                                    nargs="?", default=None)
     arg_help = ("Update the package version number in the policy's name. "
-                "Policy name must adhere to this format: "
-                "'PolicyName-<version>'. At this time, only numeric versions "
-                "are supported. e.g.: 'jss_helper promote Nethack-3.4.3 "
-                " Nethack-3.4.4 \"Install Nethack-3.4.3\"' will result in "
-                " the policy name: 'Install Nethack-3.4.4'")
-    promote_subparser.add_argument("--update_name", help=arg_help,
+                "The Policy name must include the exact product name and the "
+                "version. The package extension is optional, and will not be "
+                "modified. Text replacement also ignores '-', '_', and ' ' "
+                "(space) between the name and version. e.g.: 'jss_helper "
+                "promote \"Install Nethack-3.4.3\" Nethack-3.4.4' will result "
+                "in the policy name: 'Install Nethack-3.4.4'. See the README "
+                "for further examples and more details.")
+    promote_subparser.add_argument("-u", "--update_name", help=arg_help,
                                    action="store_true")
     promote_subparser.set_defaults(func=promote)
 
