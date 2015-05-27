@@ -184,6 +184,11 @@ def prompt_user(options, expandable=False, flags=None):
         The item chosen from the options iterable. Note, this does not
         include the flag text if present.
     """
+    # In case the abbreviated option list is actually empty, go ahead
+    # and use the expanded list.
+    if not options:
+        options = expandable
+        expandable = False
     flagged_options = _add_flags_to_list(flags, options)
     display_options_list(flagged_options)
 
@@ -207,6 +212,9 @@ def prompt_user(options, expandable=False, flags=None):
             flagged_full_options = _add_flags_to_list(flags, expandable)
             display_options_list(flagged_full_options)
             options = expandable
+            # Turn off expandable so the next loop won't continue to
+            # allow the "F" option.
+            expandable = False
         elif choice == "" and flags and "DEFAULT" in flags:
             results = [option for option in options if
                        flags["DEFAULT"](option)]
@@ -488,10 +496,46 @@ def log_warning(policy):
                 break
 
 
-def get_policies_with_available_updates(policies):
+def get_policies_with_available_updates(j, policies):
     """Documentation."""
     # Build a dictionary of package basenames, with versions as a list of
     # values.
+    packages = [package.name for package in j.Package()]
+    package_version_dict = {}
+    for package in packages:
+        package_name, package_version = get_package_info(package)
+        # Convert string version to something we can cmp.
+        if package_name:
+            if package_name not in package_version_dict:
+                package_version_dict[package_name] = [
+                    LooseVersion(package_version)]
+            else:
+                package_version_dict[package_name].append(
+                    LooseVersion(package_version))
+
+    # Narrow down packages list to only products which have multiple
+    # packages on the JSS.
+    multiples = {package: package_version_dict[package] for package in
+                 package_version_dict if
+                 len(package_version_dict[package]) > 1}
+    for i in multiples:
+        print i
+        print "Package: %s\tVersion: %s" % (i, [str(p) for p in multiples[i]])
+
+    # Get all of the policies which install packages from multiples
+    # list.
+    # TODO: Refactor with get_package_policies
+    #search = "package_configuration/packages/package"
+    #for package in multiples:
+    #    package = j.Package(args.package)
+    #results = find_object_in_containers(package, search, policies)
+    #output = build_results_string("Policies", package.name, results)
+    #print output
+
+    #for policy in policies:
+    #    cur_pkg = policy.findtext("package_configuration
+    #    cur_pkg_name, cur_pkg_version = get_package_info(cur_pkg)
+
 
     # For policy in policies, find package install.
     #   Find package basename (and get version) and look up in dictionary.
@@ -704,10 +748,12 @@ def promote(j, args):
         # Only list policies which install a package.
         # retrieve_all is slow, but worth it.
         # TODO: Refactor to get_package_policies
+        print ("No policy specified in args: Getting list of policies which "
+               "install packages from the server...")
         options = [policy.name for policy in j.Policy().retrieve_all() if
                    int(policy.findtext("package_configuration/packages/size"))
                    > 0]
-        with_updates = get_policies_with_available_updates(options)
+        with_updates = get_policies_with_available_updates(j, options)
         policy_name = prompt_user(with_updates, expandable=options)
         # TODO: We could just pop the right one off of the list.
         policy = j.Policy(policy_name)
