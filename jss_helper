@@ -518,31 +518,26 @@ def get_policies_with_available_updates(j, policies):
     multiples = {package: package_version_dict[package] for package in
                  package_version_dict if
                  len(package_version_dict[package]) > 1}
-    for i in multiples:
-        print i
-        print "Package: %s\tVersion: %s" % (i, [str(p) for p in multiples[i]])
 
-    # Get all of the policies which install packages from multiples
-    # list.
+    updates_available = []
+    search = "package_configuration/packages/package/name"
+    for policy in policies:
+        packages_installed = [package.text for package in
+                              policy.findall(search)]
+        for package in packages_installed:
+            package_name, package_version = get_package_info(package)
+            if package_name in multiples:
+                if (LooseVersion(package_version) <
+                    max(multiples[package_name])):
+                    updates_available.append(policy)
+                    break
+
+    updates_available_names = [policy.findtext("general/name") for policy in
+                               updates_available]
+
     # TODO: Refactor with get_package_policies
-    #search = "package_configuration/packages/package"
-    #for package in multiples:
-    #    package = j.Package(args.package)
-    #results = find_object_in_containers(package, search, policies)
-    #output = build_results_string("Policies", package.name, results)
-    #print output
 
-    #for policy in policies:
-    #    cur_pkg = policy.findtext("package_configuration
-    #    cur_pkg_name, cur_pkg_version = get_package_info(cur_pkg)
-
-
-    # For policy in policies, find package install.
-    #   Find package basename (and get version) and look up in dictionary.
-    #       Compare cur version with max version in dictionary
-    #       Append to our result list.
-    #for policy in policies:
-    return policies
+    return updates_available_names
 
 
 def _add_flags_to_list(flags, options):
@@ -748,14 +743,17 @@ def promote(j, args):
         # Only list policies which install a package.
         # retrieve_all is slow, but worth it.
         # TODO: Refactor to get_package_policies
-        print ("No policy specified in args: Getting list of policies which "
-               "install packages from the server...")
-        options = [policy.name for policy in j.Policy().retrieve_all() if
-                   int(policy.findtext("package_configuration/packages/size"))
-                   > 0]
-        with_updates = get_policies_with_available_updates(j, options)
-        policy_name = prompt_user(with_updates, expandable=options)
-        # TODO: We could just pop the right one off of the list.
+        print ("No policy specified in args: Building a list of policies which "
+               "have newer packages available...")
+        policy_list = j.Policy()
+        print "Retrieving %s policies. Please wait..." % len(policy_list)
+        all_policies = policy_list.retrieve_all()
+        with_updates = get_policies_with_available_updates(j, all_policies)
+        pkg_install_policies = [
+            policy.name for policy in all_policies if
+            int(policy.findtext("package_configuration/packages/size")) > 0]
+        policy_name = prompt_user(with_updates,
+                                  expandable=pkg_install_policies)
         policy = j.Policy(policy_name)
 
     cur_pkg = policy.findtext("package_configuration/packages/package/name")
