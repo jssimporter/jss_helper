@@ -184,17 +184,7 @@ def prompt_user(options, expandable=False, flags=None):
         The item chosen from the options iterable. Note, this does not
         include the flag text if present.
     """
-    # Copy list to make sure we don't mutate any values.
-    flagged_options = list(options)
-
-    if flags:
-        # Make a list of matches, then append text to each match.
-        for flag in flags:
-            matches = [option for option in flagged_options if
-                       flags[flag](option)]
-            for match in matches:
-                flagged_options[flagged_options.index(match)] += " (%s)" % flag
-
+    flagged_options = _add_flags_to_list(flags, options)
     display_options_list(flagged_options)
 
     # Build the input menu text:
@@ -214,8 +204,9 @@ def prompt_user(options, expandable=False, flags=None):
             result = options[int(choice)]
         elif choice.upper() == "F" and expandable:
             # User wants the full list.
-            display_options_list(expandable)
-            options = list(expandable)
+            flagged_full_options = _add_flags_to_list(flags, expandable)
+            display_options_list(flagged_full_options)
+            options = expandable
         elif choice == "" and flags and "DEFAULT" in flags:
             results = [option for option in options if
                        flags["DEFAULT"](option)]
@@ -507,6 +498,41 @@ def get_policies_with_available_updates(policies):
     #       Compare cur version with max version in dictionary
     #       Append to our result list.
     #for policy in policies:
+    return policies
+
+
+def _add_flags_to_list(flags, options):
+    """Add a set of flags to options which match.
+
+    See the documentation for ask_user() for full details.
+
+        Args:
+            flags: Dynamically mark some options with extra
+                text. For example, make an option "Default".
+
+                Key: String name of text to append to option in list.
+                Value: Function for matching an option. The function
+                    must return a bool.
+
+                e.g.: {"CURRENT": lambda f: current_package in f}
+                    where "current_package" is a variable with the desired
+                    value.
+
+            options: A list of strings to append text to.
+
+        Returns:
+            A list of flagged options. It does not mutate "options".
+    """
+    # Copy list to make sure we don't mutate any values.
+    flagged_options = list(options)
+    if flags:
+        # Make a list of matches, then append text to each match.
+        for flag in flags:
+            matches = [option for option in flagged_options if
+                       flags[flag](option)]
+            for match in matches:
+                flagged_options[flagged_options.index(match)] += " (%s)" % flag
+    return flagged_options
 
 
 # Actions
