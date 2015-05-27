@@ -21,52 +21,39 @@ Perform queries of objects on a JAMF Software Server.
 
 Requires: python-jss.
 
-usage: jss_helper [-h] [-v] [--ssl]
-                  {category,md,group,md_configp,package,installs,
-                   md_group,scope_diff,computer,md_scope_diff,scoped,
-                   policy,mdscoped,batch_scope,promote}
-                   ...
+usage: jss_helper [-h] [-v] [--ssl]  ...
 
 Query the JSS.
 
-positional arguments:
-  {category,md,group,md_configp,package,installs,md_group,scope_diff,
-   computer,md_scope_diff,scoped,policy,mdscoped,batch_scope,promote}
-    category            List all categories, or search for an individual
-                        category.
-    md                  List all mobile devices, or search for an
-                        indvidual mobile device.
-    group               List all computer groups, or search for an
-                        individual group.
-    md_configp          List all mobile device configuration profiles,
-                        or search for an individual mobile device
-                        configuration profile.
-    package             List of all packages, or search for an
-                        individual package.
-    installs            Lists all policies which install a package.
-    md_group            List all mobile device groups, or search for an
-                        individual mobile device group.
-    scope_diff          Show the difference between two groups' scoped
-                        policies.
-    computer            List all computers, or search for an individual
-                        computer.
-    md_scope_diff       Show the differences between two mobile device
-                        groups' scoped mobile device configuration
-                        profiles.
-    scoped              List all policies scoped to a computer group.
-    policy              List all policies, or search for an individual
-                        policy.
-    mdscoped            List all mobile device configuration profiles
-                        scoped to a mobile device group.
-    batch_scope         Scope a list of policies to a group.
-    promote             Promote a package from development to production
-                        by updating an existing production policy with a
-                        newer package.
-
 optional arguments:
-  -h, --help            show this help message and exit
-  -v                    Verbose output.
-  --ssl                 Use SSL verification
+  -h, --help     show this help message and exit
+  -v             Verbose output.
+  --ssl          Use SSL verification
+
+Actions:
+
+    category     List all categories, or search for an individual category.
+    computer     List all computers, or search for an individual computer.
+    group        List all computer groups, or search for an individual group.
+    installs     Lists all policies which install a package.
+    md           List all mobile devices, or search for an indvidual mobile
+                 device.
+    md_configp   List all mobile device configuration profiles, or search for
+                 an individual mobile device configuration profile.
+    md_group     List all mobile device groups, or search for an individual
+                 mobile device group.
+    md_scope_diff
+                 Show the differences between two mobile device groups' scoped
+                 mobile device configuration profiles.
+    md_scoped    List all mobile device configuration profiles scoped to a
+                 mobile device group.
+    package      List of all packages, or search for an individual package.
+    policy       List all policies, or search for an individual policy.
+    scope_diff   Show the difference between two groups' scoped policies.
+    scoped       List all policies scoped to a computer group.
+    batch_scope  Scope a list of policies to a group.
+    promote      Promote a package from development to production by updating
+                 an existing production policy with a newer package.
 """
 
 
@@ -297,7 +284,8 @@ def build_argument_parser(j):
     parser.add_argument("-v", action="store_true", help="Verbose output.")
     parser.add_argument("--ssl", default=False, action="store_true",
                         help="Use SSL verification")
-    subparser = parser.add_subparsers(dest="subparser_name")
+    subparser = parser.add_subparsers(dest="subparser_name", title="Actions",
+                                      metavar="")
 
     subparsers = {}
 
@@ -367,7 +355,7 @@ def build_argument_parser(j):
                                     " profile.",
                             "default": None,
                             "nargs": "?"}}}
-    subparsers["mdscoped"] = {
+    subparsers["md_scoped"] = {
         "help": "List all mobile device configuration profiles scoped to a "
                 "mobile device group.",
         "func": get_md_configp_group,
@@ -379,7 +367,8 @@ def build_argument_parser(j):
         "args": {"group1": {"help": "ID or name of first group."},
                  "group2": {"help": "ID or name of second group."}}}
 
-    for command in subparsers:
+    sorted_subparsers = sorted(subparsers)
+    for command in sorted_subparsers:
         sub = subparser.add_parser(command, help=subparsers[command]["help"],
                                    description=subparsers[command]["help"])
         for arg in subparsers[command]["args"]:
@@ -395,7 +384,7 @@ def build_argument_parser(j):
     batch_scope_subparser.add_argument(
         "group", help="Name of group to scope policies.")
     arg_help = "A space delimited list of policy IDs."
-    batch_scope_subparser.add_argument("policies", help=arg_help, nargs="*")
+    batch_scope_subparser.add_argument("policy", help=arg_help, nargs="*")
     batch_scope_subparser.set_defaults(func=batch_scope)
 
     # Promote
@@ -765,12 +754,12 @@ def batch_scope(j, args):
     Args:
         args: argparser args with properties:
             group: Name or ID of computer group.
-            policies: List of ID's or names of policies to scope.
+            policy: List of ID's or names of policies to scope.
     """
     group = j.ComputerGroup(args.group)
     print "Scoping to group: %s" % group.name
     print 79 * "-"
-    for policy_query in args.policies:
+    for policy_query in args.policy:
         policy = j.Policy(policy_query)
         policy.add_object_to_scope(group)
         policy.save()
