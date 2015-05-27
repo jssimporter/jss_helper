@@ -23,11 +23,12 @@ This release changes the names of verbs and simplifies the arguments for running
 	- e.g. ```jss_helper policy "Install Nethack"```
 - ```promote`` changes:
 	- Now allows for interactively selecting arguments.
+	- Initially only shows policies which have package updates available ("F" allows you to see all install-policies).
 	- Tries to guess which packages you may want to install (by regex searching for similar package names). You can still see a full list with the interactive "F" command.
-	-  a "-" or a " " (blank space) as delimeters in the policy name for ```--update-name``` purposes.
+	-  Uses a "-" or a " " (blank space) as delimeters in the policy name for ```--update-name``` purposes.
 	- Drops the ```old-package``` argument. It was used as a safeguard, but I no longer think that it's needed. If you're running with the ID's, you know what you're doing, and if you're running interactively, you've visually confirmed what you want.
 	- Now reminds you to flush the policy logs for non-ongoing policies.
-	- Only shows policies which install a package in interactive menu.
+	- Package options now sorted by product, then by version correctly.
 
 ## [1.0.0] - 2014-08-14 - Blaster Master
 

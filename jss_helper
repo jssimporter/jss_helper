@@ -72,6 +72,7 @@ optional arguments:
 
 import argparse
 from distutils.version import StrictVersion, LooseVersion
+from operator import itemgetter
 import re
 import subprocess
 import sys
@@ -153,6 +154,18 @@ def find_object_in_containers(search_object, search_path, containers):
     return results
 
 
+def _input_menu_text(expandable, flags):
+    """Based on available options, build a series of prompts."""
+    # Build the input menu text:
+    input_menu_strings = ["\nEnter a number to select from list."]
+    if expandable:
+        input_menu_strings.append("Enter 'F' to expand the options list.")
+    if flags and "DEFAULT" in flags:
+        input_menu_strings.append("Hit <Enter> to accept default choice.")
+    input_menu_strings.append("Please choose an object: ")
+    return "\n".join(input_menu_strings)
+
+
 def prompt_user(options, expandable=False, flags=None):
     """Ask user a question based on configured values.
 
@@ -192,19 +205,10 @@ def prompt_user(options, expandable=False, flags=None):
     flagged_options = _add_flags_to_list(flags, options)
     display_options_list(flagged_options)
 
-    # Build the input menu text:
-    input_menu_strings = ["\nEnter a number to select from list."]
-    if expandable:
-        input_menu_strings.append("Enter 'F' to expand the options list.")
-    if flags and "DEFAULT" in flags:
-        input_menu_strings.append("Hit <Enter> to accept default choice.")
-    input_menu_strings.append("Please choose an object: ")
-    input_string = "\n".join(input_menu_strings)
-
     # Ask user to select an option until they make a valid choice.
     result = None
     while not result:
-        choice = raw_input(input_string)
+        choice = raw_input(_input_menu_text(expandable, flags))
         if choice.isdigit() and in_range(int(choice), len(options)):
             result = options[int(choice)]
         elif choice.upper() == "F" and expandable:
@@ -231,6 +235,33 @@ def prompt_user(options, expandable=False, flags=None):
 def in_range(val, size):
     """Determine whether a value x is within the range 0 > x <= size."""
     return val < size and val >= 0
+
+
+def sort_package_list(packages):
+    """Sort a list of packages by version number.
+
+    Args:
+        packages: A list of string names that are formatted for
+            get_package_info() usage.
+
+    Returns:
+        A list of string package names in order of
+        distutils.version.LooseVersion
+    """
+    package_info = []
+    for package in packages:
+        pkg_name, pkg_string_version = get_package_info(package)
+        # If the regex fails on either basename or version, skip.
+        if pkg_name and pkg_string_version:
+            # Upper the name for sorting, and convert version to a
+            # LooseVersion.
+            package_info.append((package, pkg_name.upper(),
+                                 LooseVersion(pkg_string_version)))
+
+    # Sort by name, then version.
+    package_info.sort(key=itemgetter(1, 2))
+    # Return just the original name.
+    return [package[0] for package in package_info]
 
 
 def display_options_list(options):
@@ -398,7 +429,6 @@ def create_search_func(obj_method):
         args: argparser args with properties:
             search: Name or ID of object to search for.
     """
-    # TODO(Shea): Make the search term be an optional, repeatable arg.
     # pylint: disable=unused-argument
     def search_func(j, args):
         """Searches JSS for all objects OR a specific object."""
@@ -415,10 +445,14 @@ def create_search_func(obj_method):
 
 def get_package_info(package_name):
     """Return the package basename and version as a tuple."""
-    package_regex = r"([a-zA-Z0-9]+)[\s\-]([0-9.]+[a-zA-Z]*).(pkg|dmg|zip)$"
+    # Match a string comprised of one or more alphanumeric characters,
+    # whitespace, hyphens, or underscores
+    package_regex = (r"(?P<basename>[\w\s\-]+)[\s\-]"
+                     r"(?P<version>[\d.]+[a-zA-Z]*)\."
+                     r"(?P<extension>pkg|dmg|zip)$")
     match = re.search(package_regex, package_name)
     if match:
-        result = match.group(1, 2)
+        result = match.group("basename", "version")
     else:
         result = (None, None)
     return result
@@ -487,7 +521,6 @@ def log_warning(policy):
                     "trigger_login", "trigger_logout",
                     "trigger_network_state_changed", "trigger_startup",
                     "trigger_other"]
-        values = []
         for trigger in triggers:
             value = policy.findtext("general/" + trigger)
             # Value can be string "false" or "" for "trigger_other".
@@ -496,10 +529,18 @@ def log_warning(policy):
                 break
 
 
-def get_policies_with_available_updates(j, policies):
-    """Documentation."""
-    # Build a dictionary of package basenames, with versions as a list of
-    # values.
+def _build_package_version_dict(j):
+    """Build a dictionary of package products with multiple versions.
+
+    Args:
+        j: A JSS object
+
+    Returns:
+        A dictionary of packages with multiple versions on the server:
+            key: Package basename (string)
+            value: List of package versions of type
+                distutil.version.LooseVersion
+    """
     packages = [package.name for package in j.Package()]
     package_version_dict = {}
     for package in packages:
@@ -518,24 +559,43 @@ def get_policies_with_available_updates(j, policies):
     multiples = {package: package_version_dict[package] for package in
                  package_version_dict if
                  len(package_version_dict[package]) > 1}
+    return multiples
 
+
+def _get_updatable_policies(j, policies):
+    """Get a list of policies where newer pkg versions are available.
+
+    Packages must have names which can be successfully split into
+    product name and version with get_package_info().
+
+    Args:
+        j: A JSS object.
+        policies: A list of Policy objects.
+
+    Returns:
+        A list of strings; the names of policies which install a
+        package that is older than another package available on the
+        JSS.
+    """
+    multiples = _build_package_version_dict(j)
+
+    # For each policy, lookup any packages it installs in the multiples
+    # dictionary and see if there is a newer version available.
     updates_available = []
     search = "package_configuration/packages/package/name"
     for policy in policies:
         packages_installed = [package.text for package in
                               policy.findall(search)]
         for package in packages_installed:
-            package_name, package_version = get_package_info(package)
-            if package_name in multiples:
-                if (LooseVersion(package_version) <
-                    max(multiples[package_name])):
+            pkg_name, pkg_version = get_package_info(package)
+            if pkg_name in multiples:
+                if LooseVersion(pkg_version) < max(multiples[pkg_name]):
                     updates_available.append(policy)
                     break
 
+    # Make a new list of just names (rather than the full XML)
     updates_available_names = [policy.findtext("general/name") for policy in
                                updates_available]
-
-    # TODO: Refactor with get_package_policies
 
     return updates_available_names
 
@@ -717,6 +777,7 @@ def batch_scope(j, args):
         print "%s: Success." % policy.name
 
 
+# pylint: disable=too-many-locals
 def promote(j, args):
     """Replace a package in a policy with another package.
 
@@ -740,20 +801,22 @@ def promote(j, args):
     if args.policy:
         policy = j.Policy(args.policy)
     else:
-        # Only list policies which install a package.
-        # retrieve_all is slow, but worth it.
-        # TODO: Refactor to get_package_policies
+        # Interactive policy menu
         print ("No policy specified in args: Building a list of policies which "
                "have newer packages available...")
+        # Get full policy XML for all policies.
         policy_list = j.Policy()
-        print "Retrieving %s policies. Please wait..." % len(policy_list)
+        print "Retrieving %i policies. Please wait..." % len(policy_list)
         all_policies = policy_list.retrieve_all()
-        with_updates = get_policies_with_available_updates(j, all_policies)
-        pkg_install_policies = [
+
+        # Get lists of policies with available updates, and all
+        # policies which install packages.
+        with_updates = _get_updatable_policies(j, all_policies)
+        install_policies = [
             policy.name for policy in all_policies if
             int(policy.findtext("package_configuration/packages/size")) > 0]
-        policy_name = prompt_user(with_updates,
-                                  expandable=pkg_install_policies)
+
+        policy_name = prompt_user(with_updates, expandable=install_policies)
         policy = j.Policy(policy_name)
 
     cur_pkg = policy.findtext("package_configuration/packages/package/name")
@@ -762,21 +825,28 @@ def promote(j, args):
     if args.new_package:
         new_pkg_name = args.new_package
     else:
+        # Interactive package menu.
+
         # Build a list of ALL packages.
         full_options = [package.name for package in j.Package()]
-        # Build a list of packages with same product name.
+        # Build a list of packages with same product name as policy.
         matching_options = [option for option in full_options if
                             cur_pkg_basename and cur_pkg_basename.upper() in
                             option.upper()]
 
-        flags = {"CURRENT": lambda f: cur_pkg in f}
+        # Sort the package lists by name, then version.
+        sorted_full_options = sort_package_list(full_options)
+        sorted_matching_options = sort_package_list(matching_options)
 
+        # Build flags for menu.
+        flags = {"CURRENT": lambda f: cur_pkg in f}
         default = get_newest_pkg(matching_options)
         if default:
             flags["DEFAULT"] = lambda f: default in f
 
         new_pkg_name = prompt_user(
-            matching_options, expandable=full_options, flags=flags)
+            sorted_matching_options, expandable=sorted_full_options,
+            flags=flags)
 
     policy.remove_object_from_list(cur_pkg, "package_configuration/packages")
     policy.add_package(j.Package(new_pkg_name))
@@ -786,10 +856,10 @@ def promote(j, args):
             update_name(policy, cur_pkg, new_pkg_name)
         except ValueError:
             print "Unable to update policy name!"
-    print policy
-    # TODO: Un-nerf
-    #policy.save()
+
+    policy.save()
     log_warning(policy)
+# pylint: enable=too-many-locals
 
 
 def main():
