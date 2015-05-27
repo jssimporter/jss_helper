@@ -513,7 +513,7 @@ def log_warning(policy):
         for trigger in triggers:
             value = policy.findtext("general/" + trigger)
             # Value can be string "false" or "" for "trigger_other".
-            if value and not value == "false":
+            if value not in [None, "False"]:
                 print "Remember to flush the policy logs!"
                 break
 
