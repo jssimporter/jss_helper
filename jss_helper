@@ -67,7 +67,7 @@ import sys
 import jss
 
 
-__version__ = "1.0.1"
+__version__ = "2.0.0"
 REQUIRED_PYTHON_JSS_VERSION = StrictVersion("0.3.4")
 
 # Utility Functions
