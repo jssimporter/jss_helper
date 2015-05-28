@@ -12,6 +12,7 @@ This release changes the names of verbs and simplifies the arguments for running
 
 - Added a policy_with_package command.
 - Now versioned...
+- Added some tests for ```get_package_info``` to make sure it handles all "valid" LooseVersion types.
 
 ### Changed
 
@@ -29,6 +30,7 @@ This release changes the names of verbs and simplifies the arguments for running
 	- Drops the ```old-package``` argument. It was used as a safeguard, but I no longer think that it's needed. If you're running with the ID's, you know what you're doing, and if you're running interactively, you've visually confirmed what you want.
 	- Now reminds you to flush the policy logs for non-ongoing policies.
 	- Package options now sorted by product, then by version correctly.
+	- Package names and versions are more accurately determined (see README about Package Info).
 
 ## [1.0.0] - 2014-08-14 - Blaster Master
 

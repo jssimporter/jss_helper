@@ -1,7 +1,16 @@
-# jss-helper
+# jss_helper
 
 ##Introduction:
-jss-helper is a powerful commandline interface for managing and auditing your Casper JSS.
+jss_helper is a powerful commandline interface for managing and auditing your Casper JSS.
+
+At first glance, it's a quick and easy way to query for objects like Policies, Packages, Smart Groups, etc. You can view lists of *all* Packages, or you can look at the actual XML representing a single package.
+
+Where things get interesting, however, are the advanced features. jss_helper lets you do things that are not possible any other way.
+
+- You can look at all of the policies scoped to a single group, or you can compare two groups' lists of scoped policies.
+- With ```promote```, you can easily, with an interactive menu, replace packages in policies with newer packages. jss_helper is smart about prompting you with out-of-date policies and showing you only relevent packages, although you can always see a full list too. And if you know your ID's, you can run the entire command from the commandline and skip the menu. ```promote``` will even update the policy's name with the new package version if applicable.
+- Scope an entire list of policies to a group in one command. Useful if you're restructuring or adding a new group.
+- See a list of all policies which do package installs.
 
 ## Installation
 
@@ -115,6 +124,24 @@ There are a number of advanced verbs which I wrote to help me with managing and 
     - The optional argument ```-u/--update_name``` allows you to also update the name, by replacing the package name and the package version if found in the policy name. A policy named "Install Goat Simulator-1.2.0" would get changed to "Install Goat Simulator-1.3.1". See the [Package Info](#package-info) section for further details on naming.
 
 ## Package Info
+jss_helper uses a regular expression wherever packages are involved for splitting their name into a product name and a version. This regex isn't infallible, but it works pretty well, as long as you follow some simple naming best-practices:
+- Packages should have names that match their filename (i.e. for a file named "x.pkg", don't have a package name on the JSS of "x", have "x.pkg").
+- The package's product name comes first. This name can include all alphanumeric characters, underscores, and hyphens.
+- The final space, underscore, or hyphen indicates the split between product name and version number.
+- The version number should be a number of dot, underscore, or hyphen separated numbers and letter. These are frequently converted to objects of type ```distutils.version.LooseVersion```, which is pretty lenient.
+- The extension, while not used, must be one of ".pkg", ".dmg", or ".pkg.zip".
+
+### Examples of Valid Package Names:
+- ```Goat Simulator-1.3.1.pkg```
+- ```Goat_Simulator 1.3.1.pkg```
+- ```Goat2 Simulator-1.3.1a323423TESTING.pkg.zip```
+
+For reference, the regex is:
+```
+package_regex = (r"^(?P<basename>[\w\s\-]+)[\s\-_]"
+				 r"(?P<version>[\d]+[\w.\-]*)"
+				 r"(?P<extension>\.(pkg(\.zip)?|dmg))$")
+```
 
 ## Issues, Upcoming Features
 - ```policy_by_group``` can't search for "all computers". (Will add soon!)
