@@ -434,11 +434,17 @@ def create_search_func(obj_method):
 
 def get_package_info(package_name):
     """Return the package basename and version as a tuple."""
-    # Match a string comprised of one or more alphanumeric characters,
+    # Product name should be a combination of letters, numbers,
+    # hyphens, or underscores.
+    # A " ", "-", or "_" should separate the name from the version.
     # whitespace, hyphens, or underscores
-    package_regex = (r"(?P<basename>[\w\s\-]+)[\s\-]"
-                     r"(?P<version>[\d.]+[a-zA-Z]*)\."
-                     r"(?P<extension>pkg|dmg|zip)$")
+    # The version then is any number of digits, followed by any number
+    # of letters, numbers, separated by "-", "_", "."s.
+    # Finally, an extension of ".pkg", ".pkg.zip", or ".dmg" must
+    # follow.
+    package_regex = (r"^(?P<basename>[\w\s\-]+)[\s\-_]"
+                     r"(?P<version>[\d]+[\w.\-]*)"
+                     r"(?P<extension>\.(pkg(\.zip)?|dmg))$")
     match = re.search(package_regex, package_name)
     if match:
         result = match.group("basename", "version")
