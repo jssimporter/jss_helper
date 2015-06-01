@@ -67,7 +67,7 @@ import sys
 import jss
 
 
-__version__ = "2.0.0"
+__version__ = "2.0.1"
 REQUIRED_PYTHON_JSS_VERSION = StrictVersion("0.3.4")
 
 # Utility Functions
@@ -880,7 +880,11 @@ def main():
     # Until I add a toggle method...
     j.session.verify = args.ssl
 
-    args.func(j, args)
+    try:
+        args.func(j, args)
+    except KeyboardInterrupt:
+        # User wishes to bail.
+        sys.exit(1)
 
 
 if __name__ == "__main__":

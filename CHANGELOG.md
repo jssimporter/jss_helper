@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file. This projec
 
 ## [Unreleased][unreleased]
 
-- Nothing yet.
+### Changed
+
+- More gracefully handles a CTRL-C exit from the menus.
 
 ## [2.0.0] - 2015-05-28 - Deep Fried Codpiece
 This release changes the names of verbs and simplifies the arguments for running them. Therefore, there has been a major version increment!
