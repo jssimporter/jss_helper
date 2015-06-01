@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file. This projec
 ### Changed
 
 - More gracefully handles a CTRL-C exit from the menus.
+- `promote` now opens your default browser to the log page for policy if needed.
 
 ## [2.0.0] - 2015-05-28 - Deep Fried Codpiece
 This release changes the names of verbs and simplifies the arguments for running them. Therefore, there has been a major version increment!

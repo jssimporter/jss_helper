@@ -271,11 +271,8 @@ def display_options_list(options):
     print "\n" + choices
 
 
-def build_argument_parser(j):
+def build_argument_parser():
     """Build the argument parser for jss_helper.
-
-    Args:
-        j: A JSS object.
 
     Returns: A configured argparse parser.
     """
@@ -292,25 +289,25 @@ def build_argument_parser(j):
     # computer
     subparsers["computer"] = {
         "help": "List all computers, or search for an individual computer.",
-        "func": create_search_func(j.Computer),
+        "func": create_search_func(j_global.Computer),
         "args": {"search": {"help": "ID or name of computer.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["group"] = {
         "help": "List all computer groups, or search for an individual group.",
-        "func": create_search_func(j.ComputerGroup),
+        "func": create_search_func(j_global.ComputerGroup),
         "args": {"search": {"help": "ID or name of computer group.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["package"] = {
         "help": "List of all packages, or search for an individual package.",
-        "func": create_search_func(j.Package),
+        "func": create_search_func(j_global.Package),
         "args": {"search": {"help": "ID or name of package.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["policy"] = {
         "help": "List all policies, or search for an individual policy.",
-        "func": create_search_func(j.Policy),
+        "func": create_search_func(j_global.Policy),
         "args": {"search": {"help": "ID or name of policy.",
                             "default": None,
                             "nargs": "?"}}}
@@ -329,28 +326,28 @@ def build_argument_parser(j):
                  "group2": {"help": "ID or name of second group."}}}
     subparsers["category"] = {
         "help": "List all categories, or search for an individual category.",
-        "func": create_search_func(j.Category),
+        "func": create_search_func(j_global.Category),
         "args": {"search": {"help": "ID or name of category.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["md"] = {
         "help": "List all mobile devices, or search for an indvidual mobile "
                 "device.",
-        "func": create_search_func(j.MobileDevice),
+        "func": create_search_func(j_global.MobileDevice),
         "args": {"search": {"help": "ID or name of mobile device.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["md_group"] = {
         "help": "List all mobile device groups, or search for an individual "
                 "mobile device group.",
-        "func": create_search_func(j.MobileDeviceGroup),
+        "func": create_search_func(j_global.MobileDeviceGroup),
         "args": {"search": {"help": "ID or name of mobile device group.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["md_configp"] = {
         "help": "List all mobile device configuration profiles, or search for "
                 "an individual mobile device configuration profile.",
-        "func": create_search_func(j.MobileDeviceConfigurationProfile),
+        "func": create_search_func(j_global.MobileDeviceConfigurationProfile),
         "args": {"search": {"help": "ID or name of mobile device configuration"
                                     " profile.",
                             "default": None,
@@ -419,7 +416,7 @@ def create_search_func(obj_method):
             search: Name or ID of object to search for.
     """
     # pylint: disable=unused-argument
-    def search_func(j, args):
+    def search_func(args):
         """Searches JSS for all objects OR a specific object."""
         try:
             results = obj_method(args.search)
@@ -521,14 +518,21 @@ def log_warning(policy):
             # Value can be string "false" or "" for "trigger_other".
             if value not in [None, "False"]:
                 print "Remember to flush the policy logs!"
+                open_policy_log_in_browser(policy)
                 break
 
 
-def _build_package_version_dict(j):
-    """Build a dictionary of package products with multiple versions.
+def open_policy_log_in_browser(policy):
+    """Open a policy's log page in the default browser."""
+    url = j_global.base_url + "/policies.html?id=%s&o=l" % policy.id
+    if jss.tools.is_linux():
+        subprocess.check_call(["xdg-open", url])
+    elif jss.tools.is_osx():
+        subprocess.check_call(["open", url])
 
-    Args:
-        j: A JSS object
+
+def _build_package_version_dict():
+    """Build a dictionary of package products with multiple versions.
 
     Returns:
         A dictionary of packages with multiple versions on the server:
@@ -536,7 +540,7 @@ def _build_package_version_dict(j):
             value: List of package versions of type
                 distutil.version.LooseVersion
     """
-    packages = [package.name for package in j.Package()]
+    packages = [package.name for package in j_global.Package()]
     package_version_dict = {}
     for package in packages:
         package_name, package_version = get_package_info(package)
@@ -557,14 +561,13 @@ def _build_package_version_dict(j):
     return multiples
 
 
-def _get_updatable_policies(j, policies):
+def _get_updatable_policies(policies):
     """Get a list of policies where newer pkg versions are available.
 
     Packages must have names which can be successfully split into
     product name and version with get_package_info().
 
     Args:
-        j: A JSS object.
         policies: A list of Policy objects.
 
     Returns:
@@ -572,7 +575,7 @@ def _get_updatable_policies(j, policies):
         package that is older than another package available on the
         JSS.
     """
-    multiples = _build_package_version_dict(j)
+    multiples = _build_package_version_dict(j_global)
 
     # For each policy, lookup any packages it installs in the multiples
     # dictionary and see if there is a newer version available.
@@ -630,7 +633,7 @@ def _add_flags_to_list(flags, options):
 
 
 # Actions
-def get_group_policies(j, args):
+def get_group_policies(args):
     """Print all policies scoped to a group.
 
     Args:
@@ -638,14 +641,14 @@ def get_group_policies(j, args):
             group: Name or ID of computer group.
     """
     search = "scope/computer_groups/computer_group"
-    policies = j.Policy()
-    group = j.ComputerGroup(args.group)
+    policies = j_global.Policy()
+    group = j_global.ComputerGroup(args.group)
     results = find_object_in_containers(group, search, policies)
     output = build_results_string("Policies", group.name, results)
     print output
 
 
-def get_package_policies(j, args):
+def get_package_policies(args):
     """Print all policies which install a package.
 
     Args:
@@ -653,14 +656,14 @@ def get_package_policies(j, args):
             package: Name or ID of package.
     """
     search = "package_configuration/packages/package"
-    policies = j.Policy()
-    package = j.Package(args.package)
+    policies = j_global.Policy()
+    package = j_global.Package(args.package)
     results = find_object_in_containers(package, search, policies)
     output = build_results_string("Policies", package.name, results)
     print output
 
 
-def get_md_configp_group(j, args):
+def get_md_configp_group(args):
     """Print all mobile device config profiles scoped to a group.
 
     Args:
@@ -668,14 +671,14 @@ def get_md_configp_group(j, args):
             group: Name or ID of group.
     """
     search = "scope/mobile_device_groups/mobile_device_group"
-    configps = j.MobileDeviceConfigurationProfile()
-    group = j.MobileDeviceGroup(args.group)
+    configps = j_global.MobileDeviceConfigurationProfile()
+    group = j_global.MobileDeviceGroup(args.group)
     results = find_object_in_containers(group, search, configps)
     output = build_results_string("Profiles", args.group, results)
     print output
 
 
-def get_group_policy_diff(j, args):
+def get_group_policy_diff(args):
     """Print a diff of all policies scoped to two different groups.
 
     Args:
@@ -684,10 +687,10 @@ def get_group_policy_diff(j, args):
             group2: Name or ID of second computer group.
     """
     search = "scope/computer_groups/computer_group"
-    policies = j.Policy()
+    policies = j_global.Policy()
     policies.sort()
-    group1 = j.ComputerGroup(args.group1)
-    group2 = j.ComputerGroup(args.group2)
+    group1 = j_global.ComputerGroup(args.group1)
+    group2 = j_global.ComputerGroup(args.group2)
     results1 = find_object_in_containers(group1, search, policies)
     results2 = find_object_in_containers(group2, search, policies)
 
@@ -715,7 +718,7 @@ def get_group_policy_diff(j, args):
     print result
 
 
-def get_md_configp_diff(j, args):
+def get_md_configp_diff(args):
     """Print a diff of all configuration profiles scoped to two groups.
 
     Args:
@@ -724,9 +727,9 @@ def get_md_configp_diff(j, args):
             group2: Name or ID of second group.
     """
     search = "scope/mobile_device_groups/mobile_device_group"
-    profiles = j.MobileDeviceConfigurationProfile()
-    group1 = j.MobileDeviceGroup(args.group1)
-    group2 = j.MobileDeviceGroup(args.group2)
+    profiles = j_global.MobileDeviceConfigurationProfile()
+    group1 = j_global.MobileDeviceGroup(args.group1)
+    group2 = j_global.MobileDeviceGroup(args.group2)
     results1 = find_object_in_containers(group1, search, profiles)
     results2 = find_object_in_containers(group2, search, profiles)
 
@@ -754,7 +757,7 @@ def get_md_configp_diff(j, args):
     print result
 
 
-def batch_scope(j, args):
+def batch_scope(args):
     """Scope a list of policies to a computer group.
 
     Args:
@@ -762,18 +765,18 @@ def batch_scope(j, args):
             group: Name or ID of computer group.
             policy: List of ID's or names of policies to scope.
     """
-    group = j.ComputerGroup(args.group)
+    group = j_global.ComputerGroup(args.group)
     print "Scoping to group: %s" % group.name
     print 79 * "-"
     for policy_query in args.policy:
-        policy = j.Policy(policy_query)
+        policy = j_global.Policy(policy_query)
         policy.add_object_to_scope(group)
         policy.save()
         print "%s: Success." % policy.name
 
 
 # pylint: disable=too-many-locals
-def promote(j, args):
+def promote(args):
     """Replace a package in a policy with another package.
 
     Designed with the intention of facilitating promotion from
@@ -794,25 +797,25 @@ def promote(j, args):
                 and version number for this to do anything.
     """
     if args.policy:
-        policy = j.Policy(args.policy)
+        policy = j_global.Policy(args.policy)
     else:
         # Interactive policy menu
         print ("No policy specified in args: Building a list of policies which "
                "have newer packages available...")
         # Get full policy XML for all policies.
-        policy_list = j.Policy()
+        policy_list = j_global.Policy()
         print "Retrieving %i policies. Please wait..." % len(policy_list)
         all_policies = policy_list.retrieve_all()
 
         # Get lists of policies with available updates, and all
         # policies which install packages.
-        with_updates = _get_updatable_policies(j, all_policies)
+        with_updates = _get_updatable_policies(j_global, all_policies)
         install_policies = [
             policy.name for policy in all_policies if
             int(policy.findtext("package_configuration/packages/size")) > 0]
 
         policy_name = prompt_user(with_updates, expandable=install_policies)
-        policy = j.Policy(policy_name)
+        policy = j_global.Policy(policy_name)
 
     cur_pkg = policy.findtext("package_configuration/packages/package/name")
     cur_pkg_basename, _ = get_package_info(cur_pkg)
@@ -823,7 +826,7 @@ def promote(j, args):
         # Interactive package menu.
 
         # Build a list of ALL packages.
-        full_options = [package.name for package in j.Package()]
+        full_options = [package.name for package in j_global.Package()]
         # Build a list of packages with same product name as policy.
         matching_options = [option for option in full_options if
                             cur_pkg_basename and cur_pkg_basename.upper() in
@@ -844,7 +847,7 @@ def promote(j, args):
             flags=flags)
 
     policy.remove_object_from_list(cur_pkg, "package_configuration/packages")
-    policy.add_package(j.Package(new_pkg_name))
+    policy.add_package(j_global.Package(new_pkg_name))
 
     if args.update_name:
         try:
@@ -870,21 +873,23 @@ def main():
             (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
         sys.exit()
 
+    global j_global
     jss_prefs = jss.JSSPrefs()
-    j = jss.JSS(jss_prefs=jss_prefs)
+    j_global = jss.JSS(jss_prefs=jss_prefs)
 
-    parser = build_argument_parser(j)
+    parser = build_argument_parser()
     args = parser.parse_args()
     if args.v:
-        j.verbose = True
+        j_global.verbose = True
     # Until I add a toggle method...
-    j.session.verify = args.ssl
+    j_global.session.verify = args.ssl
 
     try:
-        args.func(j, args)
+        args.func(args)
     except KeyboardInterrupt:
         # User wishes to bail.
         sys.exit(1)
+
 
 
 if __name__ == "__main__":
