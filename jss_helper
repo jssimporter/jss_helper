@@ -301,10 +301,22 @@ def build_argument_parser():
         "args": {"search": {"help": "ID or name of profile.",
                             "default": None,
                             "nargs": "?"}}}
+    subparsers["excluded"] = {
+        "help": "List all policies and configuration profiles from which a "
+                "computer group is excluded.",
+        "func": get_excluded,
+        "args": {"group": {"help": "ID or name of group."}}}
     subparsers["group"] = {
         "help": "List all computer groups, or search for an individual group.",
         "func": create_search_func(j_global.ComputerGroup),
         "args": {"search": {"help": "ID or name of computer group.",
+                            "default": None,
+                            "nargs": "?"}}}
+    subparsers["imaging_config"] = {
+        "help": "List all Casper Imaging computer configurations, or search "
+                "for an individual computer configuration.",
+        "func": create_search_func(j_global.ComputerConfiguration),
+        "args": {"search": {"help": "ID or name of computer configuration.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["package"] = {
@@ -325,7 +337,8 @@ def build_argument_parser():
         "func": get_scoped,
         "args": {"group": {"help": "ID or name of a computer group."}}}
     subparsers["installs"] = {
-        "help": "Lists all policies which install a package.",
+        "help": "Lists all policies and imaging configurations which install "
+                "a package.",
         "func": get_package_policies,
         "args": {"package": {"help": "ID or name of a package."}}}
     subparsers["scope_diff"] = {
@@ -664,6 +677,29 @@ def get_scoped(args):
     print output
 
 
+def get_excluded(args):
+    """Print all policies and config profiles with group excluded.
+
+    Args:
+        args: argparser args with properties:
+            group: Name or ID of computer group.
+    """
+    search = "scope/exclusions/computer_groups/computer_group"
+    policies = j_global.Policy()
+    configps = j_global.OSXConfigurationProfile()
+    group = j_global.ComputerGroup(args.group)
+    policy_results = find_object_in_containers(group, search, policies)
+    policy_heading = "Policies with %s excluded from scope." % group.name
+    output = build_results_string(policy_heading, policy_results)
+    print output
+    print
+    configp_results = find_object_in_containers(group, search, configps)
+    configp_heading = ("Configuration profiles with %s excluded from scope." %
+                       group.name)
+    output = build_results_string(configp_heading, configp_results)
+    print output
+
+
 def get_package_policies(args):
     """Print all policies which install a package.
 
@@ -677,6 +713,13 @@ def get_package_policies(args):
     results = find_object_in_containers(package, search, policies)
     output = build_results_string("Policies which install %s" % package.name,
                                   results)
+    print output
+    print
+    search = "packages/package"
+    imaging_configs = j_global.ComputerConfiguration()
+    ic_results = find_object_in_containers(package, search, imaging_configs)
+    output = build_results_string("Imaging configs which install %s" %
+                                  package.name, ic_results)
     print output
 
 
