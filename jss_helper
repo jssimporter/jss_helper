@@ -92,18 +92,19 @@ def print_object(objs):
         print objs
 
 
-def build_results_string(obj_type, search, results):
+def build_results_string(heading, results):
     """Format a list of results for output reporting.
 
     Args:
-        obj_type: String name of type to use as a header.
-        search: String name of the object matched.
+        heading: String heading for results.
         results: An iterable of match tuples, of (int ID, str name).
 
     Returns:
         Formatted report string.
     """
-    output_string = "%s with %s:\n" % (obj_type, search)
+    output_string = heading
+    if not output_string.endswith("\n"):
+        output_string += "\n"
     if results:
         width = max([int(len(result[0])) for result in results])
         output_strings = []
@@ -293,6 +294,13 @@ def build_argument_parser():
         "args": {"search": {"help": "ID or name of computer.",
                             "default": None,
                             "nargs": "?"}}}
+    subparsers["configp"] = {
+        "help": "List all configuration profiles, or search for an individual "
+                "configuration profile.",
+        "func": create_search_func(j_global.OSXConfigurationProfile),
+        "args": {"search": {"help": "ID or name of profile.",
+                            "default": None,
+                            "nargs": "?"}}}
     subparsers["group"] = {
         "help": "List all computer groups, or search for an individual group.",
         "func": create_search_func(j_global.ComputerGroup),
@@ -312,8 +320,9 @@ def build_argument_parser():
                             "default": None,
                             "nargs": "?"}}}
     subparsers["scoped"] = {
-        "help": "List all policies scoped to a computer group.",
-        "func": get_group_policies,
+        "help": "List all policies and configuration profiles scoped to a "
+                "computer group.",
+        "func": get_scoped,
         "args": {"group": {"help": "ID or name of a computer group."}}}
     subparsers["installs"] = {
         "help": "Lists all policies which install a package.",
@@ -633,8 +642,8 @@ def _add_flags_to_list(flags, options):
 
 
 # Actions
-def get_group_policies(args):
-    """Print all policies scoped to a group.
+def get_scoped(args):
+    """Print all policies and config profiles scoped to a group.
 
     Args:
         args: argparser args with properties:
@@ -642,9 +651,16 @@ def get_group_policies(args):
     """
     search = "scope/computer_groups/computer_group"
     policies = j_global.Policy()
+    configps = j_global.OSXConfigurationProfile()
     group = j_global.ComputerGroup(args.group)
-    results = find_object_in_containers(group, search, policies)
-    output = build_results_string("Policies", group.name, results)
+    policy_results = find_object_in_containers(group, search, policies)
+    policy_heading = "Policies scoped to %s" % group.name
+    output = build_results_string(policy_heading, policy_results)
+    print output
+    print
+    configp_results = find_object_in_containers(group, search, configps)
+    configp_heading = "Configuration profiles scoped to %s" % group.name
+    output = build_results_string(configp_heading, configp_results)
     print output
 
 
@@ -659,7 +675,8 @@ def get_package_policies(args):
     policies = j_global.Policy()
     package = j_global.Package(args.package)
     results = find_object_in_containers(package, search, policies)
-    output = build_results_string("Policies", package.name, results)
+    output = build_results_string("Policies which install %s" % package.name,
+                                  results)
     print output
 
 
@@ -674,7 +691,8 @@ def get_md_configp_group(args):
     configps = j_global.MobileDeviceConfigurationProfile()
     group = j_global.MobileDeviceGroup(args.group)
     results = find_object_in_containers(group, search, configps)
-    output = build_results_string("Profiles", args.group, results)
+    output = build_results_string("Profiles scoped to %s" % group.name,
+                                  results)
     print output
 
 
@@ -697,12 +715,14 @@ def get_group_policy_diff(args):
     # I tried to do this with the tempfile module, but the files always
     # ended up being size 0 and dissappearing, despite delete=False.
     with open("/tmp/file1", mode="w") as file1:
-        output = build_results_string("Policies", group1.name, results1)
+        output = build_results_string("Policies scoped to %s" % group1.name,
+                                      results1)
         # Add a newline to keep diff from complaining.
         file1.write(output + "\n")
         file1_name = file1.name
     with open("/tmp/file2", mode="w") as file2:
-        output = build_results_string("Policies", group2.name, results2)
+        output = build_results_string("Policies scoped to %s" % group2.name,
+                                      results2)
         # Add a newline to keep diff from complaining.
         file2.write(output + "\n")
         file2_name = file2.name
@@ -736,12 +756,14 @@ def get_md_configp_diff(args):
     # I tried to do this with the tempfile module, but the files always
     # ended up being size 0 and dissappearing, despite delete=False.
     with open("/tmp/file1_name", mode="w") as file1:
-        output = build_results_string("Profiles", group1.name, results1)
+        output = build_results_string("Profiles scoped to %s" % group1.name,
+                                      results1)
         # Add a newline to keep diff from complaining.
         file1.write(output + "\n")
         file1_name = file1.name
     with open("/tmp/file2_name", mode="w") as file2:
-        output = build_results_string("Profiles", group2.name, results2)
+        output = build_results_string("Profiles scoped to %s" % group2.name,
+                                      results2)
         # Add a newline to keep diff from complaining.
         file2.write(output + "\n")
         file2_name = file2.name

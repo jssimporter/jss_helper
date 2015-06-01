@@ -5,10 +5,16 @@ All notable changes to this project will be documented in this file. This projec
 
 ## [Unreleased][unreleased]
 
+### Added
+
+- Added action `configp` for OSX Configuration Profiles.
+- `scoped` now includes OSXConfigurationProfile objects. (#4). Thanks to @homebysix for the great idea!
+
 ### Changed
 
 - More gracefully handles a CTRL-C exit from the menus.
 - `promote` now opens your default browser to the log page for policy if needed.
+- Output headers now make more sense.
 
 ## [2.0.0] - 2015-05-28 - Deep Fried Codpiece
 This release changes the names of verbs and simplifies the arguments for running them. Therefore, there has been a major version increment!
