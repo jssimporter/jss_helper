@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file. This projec
 - Added action `imaging_config`.
 - `installs` now includes imaging configurations (`ComputerConfiguration`) (#3) Thanks again to @homebysix for the idea.
 - Added action `excluded` for showing policies and profiles from which a group is excluded. (#5) (@homebysix again!)
+- Added action `md_excluded` for showing profiles from which a mobile device group is excluded.
 
 ### Changed
 

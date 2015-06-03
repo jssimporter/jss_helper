@@ -422,6 +422,11 @@ def build_argument_parser():
         "func": get_md_configp_diff,
         "args": {"group1": {"help": "ID or name of first group."},
                  "group2": {"help": "ID or name of second group."}}}
+    subparsers["md_excluded"] = {
+        "help": "List all configuration profiles from which a mobile device "
+                "group is excluded.",
+        "func": get_md_excluded,
+        "args": {"group": {"help": "ID or name of group."}}}
 
     sorted_subparsers = sorted(subparsers)
     for command in sorted_subparsers:
@@ -722,21 +727,54 @@ def get_excluded(args):
         args: argparser args with properties:
             group: Name or ID of computer group.
     """
-    search = "scope/exclusions/computer_groups/computer_group"
+    group = JSSConnection.get().ComputerGroup(args.group)
+    _get_exclusions_by_type(group)
+
+
+def get_md_excluded(args):
+    """Print all mobile device config profiles with group excluded.
+
+    Args:
+        args: argparser args with properties:
+            group: Name or ID of mobile device group.
+    """
+    group = JSSConnection.get().MobileDeviceGroup(args.group)
+    _get_exclusions_by_type(group)
+
+
+def _get_exclusions_by_type(group):
+    """Private function for retrieving excluded groups.
+
+    Will handle both mobile device and computer group exclusions.
+
+    Args:
+        group: A jss.ComputerGroup or jss.MobileDeviceGroup object.
+    """
     jss_connection = JSSConnection.get()
-    policies = jss_connection.Policy()
-    configps = jss_connection.OSXConfigurationProfile()
-    group = jss_connection.ComputerGroup(args.group)
-    policy_results = find_object_in_containers(group, search, policies)
-    policy_heading = "Policies with %s excluded from scope." % group.name
-    output = build_results_string(policy_heading, policy_results)
-    print output
-    print
-    configp_results = find_object_in_containers(group, search, configps)
-    configp_heading = ("Configuration profiles with %s excluded from scope." %
-                       group.name)
-    output = build_results_string(configp_heading, configp_results)
-    print output
+    #group = jss_connection.group_type(search)
+    scopables = []
+    header = " with %s excluded from scope." % group.name
+    base_search = "scope/exclusions/%s_groups/%s_group"
+
+    if isinstance(group, jss.ComputerGroup):
+        search = base_search % ("computer", "computer")
+        scopables.append({"containers": jss_connection.Policy(),
+                          "heading": "Policies"})
+        scopables.append(
+            {"containers": jss_connection.OSXConfigurationProfile(),
+             "heading": "Configuration Profiles"})
+    elif isinstance(group, jss.MobileDeviceGroup):
+        search = base_search % ("mobile_device", "mobile_device")
+        scopables.append(
+            {"containers": jss_connection.MobileDeviceConfigurationProfile(),
+             "heading": "Mobile Device Configuration Profiles"})
+
+    for item in scopables:
+        # TODO: Finish refactoring
+        results = find_object_in_containers(group, search, item["containers"])
+        output = build_results_string(item["heading"] + header, results)
+        print output
+        print
 
 
 def get_package_policies(args):
