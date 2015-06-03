@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file. This projec
 
 - Added action `configp` for OSX Configuration Profiles.
 - `scoped` now includes OSXConfigurationProfile objects. (#4). Thanks to @homebysix for the great idea!
+- `scope_diff`, `md_scope`, and `md_scope_diff` now also include profiles.
 - Added action `imaging_config`.
 - `installs` now includes imaging configurations (`ComputerConfiguration`) (#3) Thanks again to @homebysix for the idea.
 - Added action `excluded` for showing policies and profiles from which a group is excluded. (#5) (@homebysix again!)
@@ -19,6 +20,11 @@ All notable changes to this project will be documented in this file. This projec
 - More gracefully handles a CTRL-C exit from the menus.
 - `promote` now opens your default browser to the log page for policy if needed.
 - Output headers now make more sense.
+- Commands which search for scoped objects now include results scoped to "all computers" or "all mobile devices" in their results, labeled as such.
+	- `scoped`
+	- `md_scoped`
+	- `scope_diff`
+	- `md_scope_diff`
 
 ## [2.0.0] - 2015-05-28 - Deep Fried Codpiece
 This release changes the names of verbs and simplifies the arguments for running them. Therefore, there has been a major version increment!
