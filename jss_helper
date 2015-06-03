@@ -20,40 +20,57 @@
 Perform queries of objects on a JAMF Software Server.
 
 Requires: python-jss.
-
 usage: jss_helper [-h] [-v] [--ssl]  ...
 
 Query the JSS.
 
 optional arguments:
-  -h, --help     show this help message and exit
-  -v             Verbose output.
-  --ssl          Use SSL verification
+  -h, --help      show this help message and exit
+  -v              Verbose output.
+  --ssl           Use SSL verification
 
 Actions:
 
-    category     List all categories, or search for an individual category.
-    computer     List all computers, or search for an individual computer.
-    group        List all computer groups, or search for an individual group.
-    installs     Lists all policies which install a package.
-    md           List all mobile devices, or search for an indvidual mobile
-                 device.
-    md_configp   List all mobile device configuration profiles, or search for
-                 an individual mobile device configuration profile.
-    md_group     List all mobile device groups, or search for an individual
-                 mobile device group.
+    category      List all categories, or search for an individual
+                  category.
+    computer      List all computers, or search for an individual
+                  computer.
+    configp       List all configuration profiles, or search for an
+                  individual configuration profile.
+    excluded      List all policies and configuration profiles from
+                  which a computer group is excluded.
+    group         List all computer groups, or search for an individual
+                  group.
+    imaging_config
+                  List all Casper Imaging computer configurations, or
+                  search for an individual computer configuration.
+    installs      Lists all policies and imaging configurations which
+                  install a package.
+    md            List all mobile devices, or search for an indvidual
+                  mobile device.
+    md_configp    List all mobile device configuration profiles, or
+                  search for an individual mobile device configuration
+                  profile.
+    md_excluded   List all configuration profiles from which a mobile
+                  device group is excluded.
+    md_group      List all mobile device groups, or search for an
+                  individual mobile device group.
     md_scope_diff
-                 Show the differences between two mobile device groups' scoped
-                 mobile device configuration profiles.
-    md_scoped    List all mobile device configuration profiles scoped to a
-                 mobile device group.
-    package      List of all packages, or search for an individual package.
-    policy       List all policies, or search for an individual policy.
-    scope_diff   Show the difference between two groups' scoped policies.
-    scoped       List all policies scoped to a computer group.
-    batch_scope  Scope a list of policies to a group.
-    promote      Promote a package from development to production by updating
-                 an existing production policy with a newer package.
+                  Show the differences between two mobile device groups'
+                  scoped mobile device configuration profiles.
+    md_scoped     List all mobile device configuration profiles scoped
+                  to a mobile device group.
+    package       List of all packages, or search for an individual
+                  package.
+    policy        List all policies, or search for an individual policy.
+    scope_diff    Show the difference between two groups' scoped
+                  policies and configuration profiles.
+    scoped        List all policies and configuration profiles scoped to
+                  a computer group.
+    batch_scope   Scope a list of policies to a group.
+    promote       Promote a package from development to production by
+                  updating an existing production policy with a newer
+                  package.
 """
 
 

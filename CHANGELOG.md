@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file. This projec
 
 - Added action `configp` for OSX Configuration Profiles.
 - `scoped` now includes OSXConfigurationProfile objects. (#4). Thanks to @homebysix for the great idea!
-- `scope_diff`, `md_scope`, and `md_scope_diff` now also include profiles.
+- `scope_diff` now also include profiles.
 - Added action `imaging_config`.
 - `installs` now includes imaging configurations (`ComputerConfiguration`) (#3) Thanks again to @homebysix for the idea.
 - Added action `excluded` for showing policies and profiles from which a group is excluded. (#5) (@homebysix again!)
