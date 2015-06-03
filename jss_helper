@@ -696,6 +696,23 @@ def _add_flags_to_list(flags, options):
     return flagged_options
 
 
+def get_scoped_to_all(containers):
+    """Docstring"""
+    results = []
+    all_containers = containers.retrieve_all()
+    for container in all_containers:
+        if type(container) in [jss.Policy, jss.OSXConfigurationProfile]:
+            if container.findtext("scope/all_computers") == "true":
+                results.append((container.id, "%s (SCOPED TO ALL COMPUTERS)" %
+                                container.name))
+        elif type(container) in [jss.MobileDeviceConfigurationProfile]:
+            if container.findtext("scope/all_mobile_devices") == "true":
+                results.append((container.id,
+                                "%s (SCOPED TO ALL MOBILE DEVICES)" %
+                                container.name))
+    return results
+
+
 # Actions #####################################################################
 def get_scoped(args):
     """Print all policies and config profiles scoped to a group.
@@ -710,11 +727,13 @@ def get_scoped(args):
     configps = jss_connection.OSXConfigurationProfile()
     group = jss_connection.ComputerGroup(args.group)
     policy_results = find_object_in_containers(group, search, policies)
+    policy_results += get_scoped_to_all(policies)
     policy_heading = "Policies scoped to %s" % group.name
     output = build_results_string(policy_heading, policy_results)
     print output
     print
     configp_results = find_object_in_containers(group, search, configps)
+    configp_results += get_scoped_to_all(configps)
     configp_heading = "Configuration profiles scoped to %s" % group.name
     output = build_results_string(configp_heading, configp_results)
     print output
@@ -813,6 +832,7 @@ def get_md_configp_group(args):
     configps = jss_connection.MobileDeviceConfigurationProfile()
     group = jss_connection.MobileDeviceGroup(args.group)
     results = find_object_in_containers(group, search, configps)
+    results += get_scoped_to_all(configps)
     output = build_results_string("Profiles scoped to %s" % group.name,
                                   results)
     print output
