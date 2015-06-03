@@ -70,7 +70,41 @@ import jss
 __version__ = "2.0.1"
 REQUIRED_PYTHON_JSS_VERSION = StrictVersion("0.3.4")
 
-# Utility Functions
+
+# Class Definitions ###########################################################
+class JSSConnection(object):
+    """Class for providing a single JSS connection."""
+    _jss_prefs = None
+    _jss = None
+
+    @classmethod
+    def setup(cls):
+        """Set up the jss connection class variable."""
+        cls._jss_prefs = jss.JSSPrefs()
+        cls._jss = jss.JSS(jss_prefs=cls._jss_prefs)
+
+    @classmethod
+    def get(cls):
+        """Return the shared JSS object."""
+        if not cls._jss:
+            cls.setup()
+        return cls._jss
+
+
+
+# Utility Functions ###########################################################
+def version_check():
+    """Ensure we have the right version of python-jss."""
+    try:
+        python_jss_version = StrictVersion(jss.__version__)
+    except AttributeError:
+        python_jss_version = StrictVersion("0.0.0")
+
+    if python_jss_version < REQUIRED_PYTHON_JSS_VERSION:
+        print "Requires python-jss version: %s. Installed: %s" % (
+            (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
+        sys.exit()
+
 
 def print_object(objs):
     """Flexible print method for lists and XML.
@@ -287,17 +321,19 @@ def build_argument_parser():
 
     subparsers = {}
 
+    jss_connection = JSSConnection.get()
+
     # computer
     subparsers["computer"] = {
         "help": "List all computers, or search for an individual computer.",
-        "func": create_search_func(j_global.Computer),
+        "func": create_search_func(jss_connection.Computer),
         "args": {"search": {"help": "ID or name of computer.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["configp"] = {
         "help": "List all configuration profiles, or search for an individual "
                 "configuration profile.",
-        "func": create_search_func(j_global.OSXConfigurationProfile),
+        "func": create_search_func(jss_connection.OSXConfigurationProfile),
         "args": {"search": {"help": "ID or name of profile.",
                             "default": None,
                             "nargs": "?"}}}
@@ -308,26 +344,26 @@ def build_argument_parser():
         "args": {"group": {"help": "ID or name of group."}}}
     subparsers["group"] = {
         "help": "List all computer groups, or search for an individual group.",
-        "func": create_search_func(j_global.ComputerGroup),
+        "func": create_search_func(jss_connection.ComputerGroup),
         "args": {"search": {"help": "ID or name of computer group.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["imaging_config"] = {
         "help": "List all Casper Imaging computer configurations, or search "
                 "for an individual computer configuration.",
-        "func": create_search_func(j_global.ComputerConfiguration),
+        "func": create_search_func(jss_connection.ComputerConfiguration),
         "args": {"search": {"help": "ID or name of computer configuration.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["package"] = {
         "help": "List of all packages, or search for an individual package.",
-        "func": create_search_func(j_global.Package),
+        "func": create_search_func(jss_connection.Package),
         "args": {"search": {"help": "ID or name of package.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["policy"] = {
         "help": "List all policies, or search for an individual policy.",
-        "func": create_search_func(j_global.Policy),
+        "func": create_search_func(jss_connection.Policy),
         "args": {"search": {"help": "ID or name of policy.",
                             "default": None,
                             "nargs": "?"}}}
@@ -348,28 +384,29 @@ def build_argument_parser():
                  "group2": {"help": "ID or name of second group."}}}
     subparsers["category"] = {
         "help": "List all categories, or search for an individual category.",
-        "func": create_search_func(j_global.Category),
+        "func": create_search_func(jss_connection.Category),
         "args": {"search": {"help": "ID or name of category.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["md"] = {
         "help": "List all mobile devices, or search for an indvidual mobile "
                 "device.",
-        "func": create_search_func(j_global.MobileDevice),
+        "func": create_search_func(jss_connection.MobileDevice),
         "args": {"search": {"help": "ID or name of mobile device.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["md_group"] = {
         "help": "List all mobile device groups, or search for an individual "
                 "mobile device group.",
-        "func": create_search_func(j_global.MobileDeviceGroup),
+        "func": create_search_func(jss_connection.MobileDeviceGroup),
         "args": {"search": {"help": "ID or name of mobile device group.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["md_configp"] = {
         "help": "List all mobile device configuration profiles, or search for "
                 "an individual mobile device configuration profile.",
-        "func": create_search_func(j_global.MobileDeviceConfigurationProfile),
+        "func": create_search_func(
+            jss_connection.MobileDeviceConfigurationProfile),
         "args": {"search": {"help": "ID or name of mobile device configuration"
                                     " profile.",
                             "default": None,
@@ -546,7 +583,7 @@ def log_warning(policy):
 
 def open_policy_log_in_browser(policy):
     """Open a policy's log page in the default browser."""
-    url = j_global.base_url + "/policies.html?id=%s&o=l" % policy.id
+    url = JSSConnection.get().base_url + "/policies.html?id=%s&o=l" % policy.id
     if jss.tools.is_linux():
         subprocess.check_call(["xdg-open", url])
     elif jss.tools.is_osx():
@@ -562,7 +599,7 @@ def _build_package_version_dict():
             value: List of package versions of type
                 distutil.version.LooseVersion
     """
-    packages = [package.name for package in j_global.Package()]
+    packages = [package.name for package in JSSConnection.get().Package()]
     package_version_dict = {}
     for package in packages:
         package_name, package_version = get_package_info(package)
@@ -597,7 +634,7 @@ def _get_updatable_policies(policies):
         package that is older than another package available on the
         JSS.
     """
-    multiples = _build_package_version_dict(j_global)
+    multiples = _build_package_version_dict()
 
     # For each policy, lookup any packages it installs in the multiples
     # dictionary and see if there is a newer version available.
@@ -654,7 +691,7 @@ def _add_flags_to_list(flags, options):
     return flagged_options
 
 
-# Actions
+# Actions #####################################################################
 def get_scoped(args):
     """Print all policies and config profiles scoped to a group.
 
@@ -663,9 +700,10 @@ def get_scoped(args):
             group: Name or ID of computer group.
     """
     search = "scope/computer_groups/computer_group"
-    policies = j_global.Policy()
-    configps = j_global.OSXConfigurationProfile()
-    group = j_global.ComputerGroup(args.group)
+    jss_connection = JSSConnection.get()
+    policies = jss_connection.Policy()
+    configps = jss_connection.OSXConfigurationProfile()
+    group = jss_connection.ComputerGroup(args.group)
     policy_results = find_object_in_containers(group, search, policies)
     policy_heading = "Policies scoped to %s" % group.name
     output = build_results_string(policy_heading, policy_results)
@@ -685,9 +723,10 @@ def get_excluded(args):
             group: Name or ID of computer group.
     """
     search = "scope/exclusions/computer_groups/computer_group"
-    policies = j_global.Policy()
-    configps = j_global.OSXConfigurationProfile()
-    group = j_global.ComputerGroup(args.group)
+    jss_connection = JSSConnection.get()
+    policies = jss_connection.Policy()
+    configps = jss_connection.OSXConfigurationProfile()
+    group = jss_connection.ComputerGroup(args.group)
     policy_results = find_object_in_containers(group, search, policies)
     policy_heading = "Policies with %s excluded from scope." % group.name
     output = build_results_string(policy_heading, policy_results)
@@ -708,15 +747,16 @@ def get_package_policies(args):
             package: Name or ID of package.
     """
     search = "package_configuration/packages/package"
-    policies = j_global.Policy()
-    package = j_global.Package(args.package)
+    jss_connection = JSSConnection.get()
+    policies = jss_connection.Policy()
+    package = jss_connection.Package(args.package)
     results = find_object_in_containers(package, search, policies)
     output = build_results_string("Policies which install %s" % package.name,
                                   results)
     print output
     print
     search = "packages/package"
-    imaging_configs = j_global.ComputerConfiguration()
+    imaging_configs = jss_connection.ComputerConfiguration()
     ic_results = find_object_in_containers(package, search, imaging_configs)
     output = build_results_string("Imaging configs which install %s" %
                                   package.name, ic_results)
@@ -731,8 +771,9 @@ def get_md_configp_group(args):
             group: Name or ID of group.
     """
     search = "scope/mobile_device_groups/mobile_device_group"
-    configps = j_global.MobileDeviceConfigurationProfile()
-    group = j_global.MobileDeviceGroup(args.group)
+    jss_connection = JSSConnection.get()
+    configps = jss_connection.MobileDeviceConfigurationProfile()
+    group = jss_connection.MobileDeviceGroup(args.group)
     results = find_object_in_containers(group, search, configps)
     output = build_results_string("Profiles scoped to %s" % group.name,
                                   results)
@@ -748,10 +789,11 @@ def get_group_policy_diff(args):
             group2: Name or ID of second computer group.
     """
     search = "scope/computer_groups/computer_group"
-    policies = j_global.Policy()
+    jss_connection = JSSConnection.get()
+    policies = jss_connection.Policy()
     policies.sort()
-    group1 = j_global.ComputerGroup(args.group1)
-    group2 = j_global.ComputerGroup(args.group2)
+    group1 = jss_connection.ComputerGroup(args.group1)
+    group2 = jss_connection.ComputerGroup(args.group2)
     results1 = find_object_in_containers(group1, search, policies)
     results2 = find_object_in_containers(group2, search, policies)
 
@@ -790,9 +832,10 @@ def get_md_configp_diff(args):
             group2: Name or ID of second group.
     """
     search = "scope/mobile_device_groups/mobile_device_group"
-    profiles = j_global.MobileDeviceConfigurationProfile()
-    group1 = j_global.MobileDeviceGroup(args.group1)
-    group2 = j_global.MobileDeviceGroup(args.group2)
+    jss_connection = JSSConnection.get()
+    profiles = jss_connection.MobileDeviceConfigurationProfile()
+    group1 = jss_connection.MobileDeviceGroup(args.group1)
+    group2 = jss_connection.MobileDeviceGroup(args.group2)
     results1 = find_object_in_containers(group1, search, profiles)
     results2 = find_object_in_containers(group2, search, profiles)
 
@@ -830,11 +873,12 @@ def batch_scope(args):
             group: Name or ID of computer group.
             policy: List of ID's or names of policies to scope.
     """
-    group = j_global.ComputerGroup(args.group)
+    jss_connection = JSSConnection.get()
+    group = jss_connection.ComputerGroup(args.group)
     print "Scoping to group: %s" % group.name
     print 79 * "-"
     for policy_query in args.policy:
-        policy = j_global.Policy(policy_query)
+        policy = jss_connection.Policy(policy_query)
         policy.add_object_to_scope(group)
         policy.save()
         print "%s: Success." % policy.name
@@ -861,26 +905,27 @@ def promote(args):
                 The policy name must include the exact package name,
                 and version number for this to do anything.
     """
+    jss_connection = JSSConnection.get()
     if args.policy:
-        policy = j_global.Policy(args.policy)
+        policy = jss_connection.Policy(args.policy)
     else:
         # Interactive policy menu
-        print ("No policy specified in args: Building a list of policies which "
-               "have newer packages available...")
+        print ("No policy specified in args: Building a list of policies "
+               "which have newer packages available...")
         # Get full policy XML for all policies.
-        policy_list = j_global.Policy()
+        policy_list = jss_connection.Policy()
         print "Retrieving %i policies. Please wait..." % len(policy_list)
         all_policies = policy_list.retrieve_all()
 
         # Get lists of policies with available updates, and all
         # policies which install packages.
-        with_updates = _get_updatable_policies(j_global, all_policies)
+        with_updates = _get_updatable_policies(all_policies)
         install_policies = [
             policy.name for policy in all_policies if
             int(policy.findtext("package_configuration/packages/size")) > 0]
 
         policy_name = prompt_user(with_updates, expandable=install_policies)
-        policy = j_global.Policy(policy_name)
+        policy = jss_connection.Policy(policy_name)
 
     cur_pkg = policy.findtext("package_configuration/packages/package/name")
     cur_pkg_basename, _ = get_package_info(cur_pkg)
@@ -891,7 +936,7 @@ def promote(args):
         # Interactive package menu.
 
         # Build a list of ALL packages.
-        full_options = [package.name for package in j_global.Package()]
+        full_options = [package.name for package in jss_connection.Package()]
         # Build a list of packages with same product name as policy.
         matching_options = [option for option in full_options if
                             cur_pkg_basename and cur_pkg_basename.upper() in
@@ -912,7 +957,7 @@ def promote(args):
             flags=flags)
 
     policy.remove_object_from_list(cur_pkg, "package_configuration/packages")
-    policy.add_package(j_global.Package(new_pkg_name))
+    policy.add_package(jss_connection.Package(new_pkg_name))
 
     if args.update_name:
         try:
@@ -927,34 +972,21 @@ def promote(args):
 
 def main():
     """Run as a cli command."""
-    # Ensure we have the right version of python-jss
-    try:
-        python_jss_version = StrictVersion(jss.__version__)
-    except AttributeError:
-        python_jss_version = StrictVersion("0.0.0")
-
-    if python_jss_version < REQUIRED_PYTHON_JSS_VERSION:
-        print "Requires python-jss version: %s. Installed: %s" % (
-            (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
-        sys.exit()
-
-    global j_global
-    jss_prefs = jss.JSSPrefs()
-    j_global = jss.JSS(jss_prefs=jss_prefs)
+    version_check()
+    jss_connection = JSSConnection.get()
 
     parser = build_argument_parser()
     args = parser.parse_args()
     if args.v:
-        j_global.verbose = True
+        jss_connection.verbose = True
     # Until I add a toggle method...
-    j_global.session.verify = args.ssl
+    jss_connection.session.verify = args.ssl
 
     try:
         args.func(args)
     except KeyboardInterrupt:
         # User wishes to bail.
         sys.exit(1)
-
 
 
 if __name__ == "__main__":
