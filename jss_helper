@@ -76,6 +76,7 @@ Actions:
 
 import argparse
 from distutils.version import StrictVersion, LooseVersion
+import fnmatch
 from operator import itemgetter
 import re
 import subprocess
@@ -742,6 +743,42 @@ def get_scoped_to_all(containers):
     return results
 
 
+def wildcard_search(objects, pattern, case_sensitive=True):
+    """Search for names that match a Unix-shell style pattern.
+
+    Args:
+        objects: Iterable of JSSObjects with a .name property.
+        pattern: String pattern to search for, with the following
+            characters used as wildcards:
+                "*": Matches everything.
+                "?": Matches any single character.
+                "[seq]": Matches any character in seq.
+                "[!seq]": Matches any character not in seq.
+                To escqpe a wildcard character, wrap it in brackets;
+                e.g.: "[?]" matches a "?".
+        case_sensitive: Boolean value whether to make comparison with
+            case sensitivity. Defaults to "True".
+
+    Returns:
+        List of all matches.
+    """
+    # The fnmatch module uses OS-specific case sensitivity settings.
+    # We are not matching filenames, so we don't care what the
+    # filesystem wants.
+
+    # It would probably be easier to just copy the fnmatch source here
+    # and edit fnmatch.fnmatch to do what we need!
+    if not case_sensitive:
+        test_names = [(obj, obj.name.upper()) for obj in objects]
+    else:
+        test_names = [(obj, obj.name) for obj in objects]
+
+    results = [obj for obj, name in test_names if
+               fnmatch.fnmatchcase(name, pattern)]
+
+    return results
+
+
 # Actions #####################################################################
 def get_scoped(args):
     """Print all policies and config profiles scoped to a group.
@@ -836,18 +873,25 @@ def get_package_policies(args):
     search = "package_configuration/packages/package"
     jss_connection = JSSConnection.get()
     policies = jss_connection.Policy()
-    package = jss_connection.Package(args.package)
-    results = find_object_in_containers(package, search, policies)
-    output = build_results_string("Policies which install %s" % package.name,
-                                  results)
-    print output
-    print
+    packages = wildcard_search(jss_connection.Package(), args.package)
+    results = []
+    for package in packages:
+        results += find_object_in_containers(package, search, policies)
+    results_set = set(results)
+    print packages
+    output = build_results_string("Policies which install '%s'" % args.package,
+                                  results_set)
+    print output + "\n"
+
     search = "packages/package"
     imaging_configs = jss_connection.ComputerConfiguration()
-    ic_results = find_object_in_containers(package, search, imaging_configs)
-    output = build_results_string("Imaging configs which install %s" %
-                                  package.name, ic_results)
-    print output
+    ic_results = []
+    for package in packages:
+        ic_results += find_object_in_containers(package, search,
+                                                imaging_configs)
+    output = build_results_string("Imaging configs which install '%s'" %
+                                  args.package, ic_results)
+    print output + "\n"
 
 
 def get_md_configp_group(args):
