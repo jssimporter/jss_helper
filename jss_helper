@@ -133,15 +133,17 @@ def print_object(objs):
         objs: List of JSSObjects or a JSSObject.
     """
     # TODO(Shea): Refactor into build_results_string.
-    if isinstance(objs, list):
+    if isinstance(objs, list) and objs:
         width = max([int(len(str(obj.id))) for obj in objs])
         results = []
         for obj in objs:
             results.append(u"ID: {:>{width}}\tNAME: {}".format(
                 obj.id, obj.name, width=width))
         print "\n".join(results)
-    else:
+    elif objs:
         print objs
+    else:
+        print "No results found."
 
 
 def build_results_string(heading, results):
@@ -507,12 +509,26 @@ def create_search_func(obj_method):
     # pylint: disable=unused-argument
     def search_func(args):
         """Searches JSS for all objects OR a specific object."""
-        try:
-            results = obj_method(args.search)
-        except jss.JSSGetError:
+        wildcards = "*?[]"
+
+        search_is_wildcard = False
+        if args.search:
+            for wildcard in wildcards:
+                if wildcard in args.search:
+                    search_is_wildcard = True
+
+        if search_is_wildcard:
+            results = wildcard_search(obj_method(), args.search)
+        else:
+            try:
+                results = obj_method(args.search)
+            except jss.JSSGetError:
+                results = None
+
+        if results is None:
             print "Object: %s does not exist!" % args.search
-            sys.exit(1)
-        print_object(results)
+        else:
+            print_object(results)
     # pylint: enable=unused-argument
 
     return search_func
