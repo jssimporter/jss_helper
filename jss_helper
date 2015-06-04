@@ -401,7 +401,7 @@ def build_argument_parser():
     subparsers["scope_diff"] = {
         "help": "Show the difference between two groups' scoped policies and "
                 "configuration profiles.",
-        "func": get_group_policy_diff,
+        "func": get_group_scope_diff,
         "args": {"group1": {"help": "ID or name of first group."},
                  "group2": {"help": "ID or name of second group."}}}
     subparsers["category"] = {
@@ -436,12 +436,12 @@ def build_argument_parser():
     subparsers["md_scoped"] = {
         "help": "List all mobile device configuration profiles scoped to a "
                 "mobile device group.",
-        "func": get_md_configp_group,
+        "func": get_md_scoped,
         "args": {"group": {"help": "ID or name of a mobile device group."}}}
     subparsers["md_scope_diff"] = {
         "help": "Show the differences between two mobile device groups' "
                 "scoped mobile device configuration profiles.",
-        "func": get_md_configp_diff,
+        "func": get_md_scope_diff,
         "args": {"group1": {"help": "ID or name of first group."},
                  "group2": {"help": "ID or name of second group."}}}
     subparsers["md_excluded"] = {
@@ -811,6 +811,146 @@ def get_scoped(args):
     print output
 
 
+def get_md_scoped(args):
+    """Print all mobile device config profiles scoped to a group.
+
+    Args:
+        args: argparser args with properties:
+            group: Name or ID of group.
+    """
+    search = "scope/mobile_device_groups/mobile_device_group"
+    jss_connection = JSSConnection.get()
+    configps = jss_connection.MobileDeviceConfigurationProfile()
+    group = jss_connection.MobileDeviceGroup(args.group)
+    results = find_objects_in_containers([group], search, configps)
+    results += get_scoped_to_all(configps)
+    output = build_results_string("Profiles scoped to %s" % group.name,
+                                  results)
+    print output
+
+
+def get_group_scope_diff(args):
+    """Print a diff of all policies scoped to two different groups.
+
+    Args:
+        args: argparser args with properties:
+            group1: Name or ID of first computer group.
+            group2: Name or ID of second computer group.
+    """
+    # TODO: This can just run scoped twice and then do the file diff.
+    search = "scope/computer_groups/computer_group"
+    jss_connection = JSSConnection.get()
+    policies = jss_connection.Policy()
+    policies.sort()
+    group1 = jss_connection.ComputerGroup(args.group1)
+    group2 = jss_connection.ComputerGroup(args.group2)
+    results1 = find_objects_in_containers([group1], search, policies)
+    results2 = find_objects_in_containers([group2], search, policies)
+    scoped_to_all = get_scoped_to_all(policies)
+    results1 += scoped_to_all
+    results2 += scoped_to_all
+
+    configps = jss_connection.OSXConfigurationProfile()
+    configps.sort()
+    configp_results1 = find_objects_in_containers([group1], search, configps)
+    configp_results2 = find_objects_in_containers([group2], search, configps)
+    configp_scoped_to_all = get_scoped_to_all(configps)
+    configp_results1 += configp_scoped_to_all
+    configp_results2 += configp_scoped_to_all
+    # I tried to do this with the tempfile module, but the files always
+    # ended up being size 0 and dissappearing, despite delete=False.
+    with open("/tmp/file1", mode="w") as file1:
+        output = build_results_string("Policies scoped to %s" % group1.name,
+                                      results1)
+        output += build_results_string("\nConfiguration profiles scoped to %s"
+                                       % group1.name, configp_results1)
+        # Add a newline to keep diff from complaining.
+        file1.write(output + "\n")
+        file1_name = file1.name
+    with open("/tmp/file2", mode="w") as file2:
+        output = build_results_string("Policies scoped to %s" % group2.name,
+                                      results2)
+        output += build_results_string("\nConfiguration profiles scoped to %s"
+                                       % group2.name, configp_results2)
+        # Add a newline to keep diff from complaining.
+        file2.write(output + "\n")
+        file2_name = file2.name
+
+    # Diff will return 1 if files differ, so we have to catch that
+    # error.
+    try:
+        result = subprocess.check_output(
+            ["diff", "-dy", file1_name, file2_name])
+    except subprocess.CalledProcessError as err:
+        result = err.output
+
+    print result
+
+
+def get_md_scope_diff(args):
+    """Print a diff of all configuration profiles scoped to two groups.
+
+    Args:
+        args: argparser args with properties:
+            group1: Name or ID of first group.
+            group2: Name or ID of second group.
+    """
+    search = "scope/mobile_device_groups/mobile_device_group"
+    jss_connection = JSSConnection.get()
+    profiles = jss_connection.MobileDeviceConfigurationProfile()
+    group1 = jss_connection.MobileDeviceGroup(args.group1)
+    group2 = jss_connection.MobileDeviceGroup(args.group2)
+    results1 = find_objects_in_containers([group1], search, profiles)
+    results2 = find_objects_in_containers([group2], search, profiles)
+    scoped_to_all = get_scoped_to_all(profiles)
+    results1 += scoped_to_all
+    results2 += scoped_to_all
+
+    # I tried to do this with the tempfile module, but the files always
+    # ended up being size 0 and dissappearing, despite delete=False.
+    with open("/tmp/file1_name", mode="w") as file1:
+        output = build_results_string("Profiles scoped to %s" % group1.name,
+                                      results1)
+        # Add a newline to keep diff from complaining.
+        file1.write(output + "\n")
+        file1_name = file1.name
+    with open("/tmp/file2_name", mode="w") as file2:
+        output = build_results_string("Profiles scoped to %s" % group2.name,
+                                      results2)
+        # Add a newline to keep diff from complaining.
+        file2.write(output + "\n")
+        file2_name = file2.name
+
+    # Diff will return 1 if files differ, so we have to catch that
+    # error.
+    try:
+        result = subprocess.check_output(
+            ["diff", "-dy", file1_name, file2_name])
+    except subprocess.CalledProcessError as err:
+        result = err.output
+
+    print result
+
+
+def batch_scope(args):
+    """Scope a list of policies to a computer group.
+
+    Args:
+        args: argparser args with properties:
+            group: Name or ID of computer group.
+            policy: List of ID's or names of policies to scope.
+    """
+    jss_connection = JSSConnection.get()
+    group = jss_connection.ComputerGroup(args.group)
+    print "Scoping to group: %s" % group.name
+    print 79 * "-"
+    for policy_query in args.policy:
+        policy = jss_connection.Policy(policy_query)
+        policy.add_object_to_scope(group)
+        policy.save()
+        print "%s: Success." % policy.name
+
+
 def get_excluded(args):
     """Print all policies and config profiles with group excluded.
 
@@ -892,146 +1032,6 @@ def get_package_policies(args):
     output = build_results_string("Imaging configs which install '%s'" %
                                   args.package, ic_results)
     print output + "\n"
-
-
-def get_md_configp_group(args):
-    """Print all mobile device config profiles scoped to a group.
-
-    Args:
-        args: argparser args with properties:
-            group: Name or ID of group.
-    """
-    search = "scope/mobile_device_groups/mobile_device_group"
-    jss_connection = JSSConnection.get()
-    configps = jss_connection.MobileDeviceConfigurationProfile()
-    group = jss_connection.MobileDeviceGroup(args.group)
-    results = find_objects_in_containers([group], search, configps)
-    results += get_scoped_to_all(configps)
-    output = build_results_string("Profiles scoped to %s" % group.name,
-                                  results)
-    print output
-
-
-def get_group_policy_diff(args):
-    """Print a diff of all policies scoped to two different groups.
-
-    Args:
-        args: argparser args with properties:
-            group1: Name or ID of first computer group.
-            group2: Name or ID of second computer group.
-    """
-    # TODO: This can just run scoped twice and then do the file diff.
-    search = "scope/computer_groups/computer_group"
-    jss_connection = JSSConnection.get()
-    policies = jss_connection.Policy()
-    policies.sort()
-    group1 = jss_connection.ComputerGroup(args.group1)
-    group2 = jss_connection.ComputerGroup(args.group2)
-    results1 = find_objects_in_containers([group1], search, policies)
-    results2 = find_objects_in_containers([group2], search, policies)
-    scoped_to_all = get_scoped_to_all(policies)
-    results1 += scoped_to_all
-    results2 += scoped_to_all
-
-    configps = jss_connection.OSXConfigurationProfile()
-    configps.sort()
-    configp_results1 = find_objects_in_containers([group1], search, configps)
-    configp_results2 = find_objects_in_containers([group2], search, configps)
-    configp_scoped_to_all = get_scoped_to_all(configps)
-    configp_results1 += configp_scoped_to_all
-    configp_results2 += configp_scoped_to_all
-    # I tried to do this with the tempfile module, but the files always
-    # ended up being size 0 and dissappearing, despite delete=False.
-    with open("/tmp/file1", mode="w") as file1:
-        output = build_results_string("Policies scoped to %s" % group1.name,
-                                      results1)
-        output += build_results_string("\nConfiguration profiles scoped to %s"
-                                       % group1.name, configp_results1)
-        # Add a newline to keep diff from complaining.
-        file1.write(output + "\n")
-        file1_name = file1.name
-    with open("/tmp/file2", mode="w") as file2:
-        output = build_results_string("Policies scoped to %s" % group2.name,
-                                      results2)
-        output += build_results_string("\nConfiguration profiles scoped to %s"
-                                       % group2.name, configp_results2)
-        # Add a newline to keep diff from complaining.
-        file2.write(output + "\n")
-        file2_name = file2.name
-
-    # Diff will return 1 if files differ, so we have to catch that
-    # error.
-    try:
-        result = subprocess.check_output(
-            ["diff", "-dy", file1_name, file2_name])
-    except subprocess.CalledProcessError as err:
-        result = err.output
-
-    print result
-
-
-def get_md_configp_diff(args):
-    """Print a diff of all configuration profiles scoped to two groups.
-
-    Args:
-        args: argparser args with properties:
-            group1: Name or ID of first group.
-            group2: Name or ID of second group.
-    """
-    search = "scope/mobile_device_groups/mobile_device_group"
-    jss_connection = JSSConnection.get()
-    profiles = jss_connection.MobileDeviceConfigurationProfile()
-    group1 = jss_connection.MobileDeviceGroup(args.group1)
-    group2 = jss_connection.MobileDeviceGroup(args.group2)
-    results1 = find_objects_in_containers([group1], search, profiles)
-    results2 = find_objects_in_containers([group2], search, profiles)
-    scoped_to_all = get_scoped_to_all(profiles)
-    results1 += scoped_to_all
-    results2 += scoped_to_all
-
-    # I tried to do this with the tempfile module, but the files always
-    # ended up being size 0 and dissappearing, despite delete=False.
-    with open("/tmp/file1_name", mode="w") as file1:
-        output = build_results_string("Profiles scoped to %s" % group1.name,
-                                      results1)
-        # Add a newline to keep diff from complaining.
-        file1.write(output + "\n")
-        file1_name = file1.name
-    with open("/tmp/file2_name", mode="w") as file2:
-        output = build_results_string("Profiles scoped to %s" % group2.name,
-                                      results2)
-        # Add a newline to keep diff from complaining.
-        file2.write(output + "\n")
-        file2_name = file2.name
-
-    # Diff will return 1 if files differ, so we have to catch that
-    # error.
-    try:
-        result = subprocess.check_output(
-            ["diff", "-dy", file1_name, file2_name])
-    except subprocess.CalledProcessError as err:
-        result = err.output
-
-    print result
-
-
-def batch_scope(args):
-    """Scope a list of policies to a computer group.
-
-    Args:
-        args: argparser args with properties:
-            group: Name or ID of computer group.
-            policy: List of ID's or names of policies to scope.
-    """
-    jss_connection = JSSConnection.get()
-    group = jss_connection.ComputerGroup(args.group)
-    print "Scoping to group: %s" % group.name
-    print 79 * "-"
-    for policy_query in args.policy:
-        policy = jss_connection.Policy(policy_query)
-        policy.add_object_to_scope(group)
-        policy.save()
-        print "%s: Success." % policy.name
 
 
 # pylint: disable=too-many-locals
