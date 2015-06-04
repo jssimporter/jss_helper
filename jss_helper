@@ -169,28 +169,31 @@ def build_results_string(heading, results):
     return output_string
 
 
-def find_object_in_containers(search_object, search_path, containers):
-    """Get all container objects which contain a reference to an object.
+def find_objects_in_containers(search_objects, search_path, containers):
+    """Get all container objects which contain references to objects.
 
     JSS Objects often reference other objects: e.g. Policies have
     scoping groups and packages. This function will search within a
     container-type JSS Object for a reference to another object.
 
     Args:
-        search_object: A JSSObject to search for in objs.
-        search_path: A xpath String to the list container to check for
-            search object.
-        containers: List of JSSObjects to check.
+        search_objects: A list of target JSSObjects to search for in
+            'containers'.
+        search_path: A str xpath pointing to the subelement of
+            'containers' to search within.
+        containers: List of JSSObjects to in which to locate
+            'search_objects'.
 
     Returns: A list of tuples (object's ID, object's name) which match.
     """
     results = []
     full_objects = containers.retrieve_all()
-    for obj in full_objects:
-        for element in obj.findall(search_path):
-            if (element.findtext("id") == search_object.id or
-                    element.findtext("name") == search_object.name):
-                results.append((obj.id, obj.name))
+    for search_object in search_objects:
+        for obj in full_objects:
+            for element in obj.findall(search_path):
+                if (element.findtext("id") == search_object.id or
+                        element.findtext("name") == search_object.name):
+                    results.append((obj.id, obj.name))
     return results
 
 
@@ -731,6 +734,7 @@ def get_scoped_to_all(containers):
     # calls this has probably already retrieved everything!
     all_containers = containers.retrieve_all()
     for container in all_containers:
+        # pylint: disable=unidiomatic-typecheck
         if type(container) in [jss.Policy, jss.OSXConfigurationProfile]:
             if container.findtext("scope/all_computers") == "true":
                 results.append((container.id, "%s (SCOPED TO ALL COMPUTERS)" %
@@ -740,6 +744,7 @@ def get_scoped_to_all(containers):
                 results.append((container.id,
                                 "%s (SCOPED TO ALL MOBILE DEVICES)" %
                                 container.name))
+        # pylint: enable=unidiomatic-typecheck
     return results
 
 
@@ -793,13 +798,13 @@ def get_scoped(args):
     configps = jss_connection.OSXConfigurationProfile()
     group = jss_connection.ComputerGroup(args.group)
     # TODO: Refactor this! (Code smells repetitive)
-    policy_results = find_object_in_containers(group, search, policies)
+    policy_results = find_objects_in_containers([group], search, policies)
     policy_results += get_scoped_to_all(policies)
     policy_heading = "Policies scoped to %s" % group.name
     output = build_results_string(policy_heading, policy_results)
     print output
     print
-    configp_results = find_object_in_containers(group, search, configps)
+    configp_results = find_objects_in_containers([group], search, configps)
     configp_results += get_scoped_to_all(configps)
     configp_heading = "Configuration profiles scoped to %s" % group.name
     output = build_results_string(configp_heading, configp_results)
@@ -857,7 +862,8 @@ def _get_exclusions_by_type(group):
 
     for item in scopables:
         # TODO: Finish refactoring
-        results = find_object_in_containers(group, search, item["containers"])
+        results = find_objects_in_containers([group], search,
+                                             item["containers"])
         output = build_results_string(item["heading"] + header, results)
         print output
         print
@@ -874,21 +880,15 @@ def get_package_policies(args):
     jss_connection = JSSConnection.get()
     policies = jss_connection.Policy()
     packages = wildcard_search(jss_connection.Package(), args.package)
-    results = []
-    for package in packages:
-        results += find_object_in_containers(package, search, policies)
-    results_set = set(results)
-    print packages
+    results = set(find_objects_in_containers(packages, search, policies))
     output = build_results_string("Policies which install '%s'" % args.package,
-                                  results_set)
+                                  results)
     print output + "\n"
 
     search = "packages/package"
     imaging_configs = jss_connection.ComputerConfiguration()
-    ic_results = []
-    for package in packages:
-        ic_results += find_object_in_containers(package, search,
-                                                imaging_configs)
+    ic_results = set(find_objects_in_containers(packages, search,
+                                                imaging_configs))
     output = build_results_string("Imaging configs which install '%s'" %
                                   args.package, ic_results)
     print output + "\n"
@@ -905,7 +905,7 @@ def get_md_configp_group(args):
     jss_connection = JSSConnection.get()
     configps = jss_connection.MobileDeviceConfigurationProfile()
     group = jss_connection.MobileDeviceGroup(args.group)
-    results = find_object_in_containers(group, search, configps)
+    results = find_objects_in_containers([group], search, configps)
     results += get_scoped_to_all(configps)
     output = build_results_string("Profiles scoped to %s" % group.name,
                                   results)
@@ -927,16 +927,16 @@ def get_group_policy_diff(args):
     policies.sort()
     group1 = jss_connection.ComputerGroup(args.group1)
     group2 = jss_connection.ComputerGroup(args.group2)
-    results1 = find_object_in_containers(group1, search, policies)
-    results2 = find_object_in_containers(group2, search, policies)
+    results1 = find_objects_in_containers([group1], search, policies)
+    results2 = find_objects_in_containers([group2], search, policies)
     scoped_to_all = get_scoped_to_all(policies)
     results1 += scoped_to_all
     results2 += scoped_to_all
 
     configps = jss_connection.OSXConfigurationProfile()
     configps.sort()
-    configp_results1 = find_object_in_containers(group1, search, configps)
-    configp_results2 = find_object_in_containers(group2, search, configps)
+    configp_results1 = find_objects_in_containers([group1], search, configps)
+    configp_results2 = find_objects_in_containers([group2], search, configps)
     configp_scoped_to_all = get_scoped_to_all(configps)
     configp_results1 += configp_scoped_to_all
     configp_results2 += configp_scoped_to_all
@@ -945,8 +945,8 @@ def get_group_policy_diff(args):
     with open("/tmp/file1", mode="w") as file1:
         output = build_results_string("Policies scoped to %s" % group1.name,
                                       results1)
-        output += build_results_string("\nConfiguration profiles scoped to %s" %
-                                       group1.name, configp_results1)
+        output += build_results_string("\nConfiguration profiles scoped to %s"
+                                       % group1.name, configp_results1)
         # Add a newline to keep diff from complaining.
         file1.write(output + "\n")
         file1_name = file1.name
@@ -983,8 +983,8 @@ def get_md_configp_diff(args):
     profiles = jss_connection.MobileDeviceConfigurationProfile()
     group1 = jss_connection.MobileDeviceGroup(args.group1)
     group2 = jss_connection.MobileDeviceGroup(args.group2)
-    results1 = find_object_in_containers(group1, search, profiles)
-    results2 = find_object_in_containers(group2, search, profiles)
+    results1 = find_objects_in_containers([group1], search, profiles)
+    results2 = find_objects_in_containers([group2], search, profiles)
     scoped_to_all = get_scoped_to_all(profiles)
     results1 += scoped_to_all
     results2 += scoped_to_all
