@@ -87,6 +87,7 @@ import jss
 
 __version__ = "2.0.1"
 REQUIRED_PYTHON_JSS_VERSION = StrictVersion("0.3.4")
+WILDCARDS = "*?[]"
 
 
 # Class Definitions ###########################################################
@@ -370,10 +371,21 @@ def build_argument_parser():
         "args": {"group": {"help": "ID or name of group."}}}
     subparsers["group"] = {
         "help": "List all computer groups, or search for an individual group.",
-        "func": create_search_func(jss_connection.ComputerGroup),
+        "func": group_search_or_modify,
         "args": {"search": {"help": "ID or name of computer group.",
                             "default": None,
-                            "nargs": "?"}}}
+                            "nargs": "?"},
+                 "--add": {"help": "Computer ID's or names to add to group. "
+                                   "Wildcards may be used.",
+                           "nargs": "*"},
+                 "--remove": {"help": "Computer ID's or names to remove from "
+                                      "group. Wildcards may be used.",
+                           "nargs": "*"},
+                 "--dry-run": {"help": "Construct the updated XML for the "
+                                       "group, but don't save. Prints "
+                                       "results.",
+                               "action": "store_true"}}}
+        #create_search_func(jss_connection.ComputerGroup),
     subparsers["imaging_config"] = {
         "help": "List all Casper Imaging computer configurations, or search "
                 "for an individual computer configuration.",
@@ -509,11 +521,10 @@ def create_search_func(obj_method):
     # pylint: disable=unused-argument
     def search_func(args):
         """Searches JSS for all objects OR a specific object."""
-        wildcards = "*?[]"
 
         search_is_wildcard = False
         if args.search:
-            for wildcard in wildcards:
+            for wildcard in WILDCARDS:
                 if wildcard in args.search:
                     search_is_wildcard = True
 
@@ -992,6 +1003,99 @@ def batch_scope(args):
         policy.save()
         print "%s: Success." % policy.name
 
+
+def group_search_or_modify(args):
+    """Perform a group search or add/remove computers from group.
+
+    Args:
+        args: argparser args with properties:
+            search: Name or ID of computer group.
+            add: List of ID, name, or name wildcard searches to add.
+            remove: List of ID, name, or name wildcard searches to
+                remove.
+            dry_run: Bool whether to save or just print group XML.
+    """
+    # TODO: There's a lot of duplication and need of refactoring here.
+    jss_connection = JSSConnection.get()
+    if not args.search and (args.add or args.remove):
+        print "Please provide a group to add or remove from."
+        sys.exit(1)
+    elif args.search and (args.add or args.remove):
+        computers = jss_connection.Computer()
+        try:
+            group = jss_connection.ComputerGroup(args.search)
+        except jss.exceptions.JSSGetError:
+            print "Group not found."
+            sys.exit(1)
+        if args.add:
+            add_computers = []
+            for computer_search in args.add:
+                search_is_wildcard = False
+                for wildcard in WILDCARDS:
+                    if wildcard in computer_search:
+                        search_is_wildcard = True
+                        break
+
+                full_computers = []
+                if search_is_wildcard:
+                    search_results = [computer["name"] for computer in
+                                      wildcard_search(computers,
+                                                      computer_search)]
+                    full_computers.extend(search_results)
+                else:
+                    full_computers.append(computer_search)
+
+                for computer in full_computers:
+                    try:
+                        add_computers.append(
+                            jss_connection.Computer(computer))
+                    except jss.exceptions.JSSGetError:
+                        continue
+
+            for computer in add_computers:
+                print "Adding %s to %s" % (computer.name, group.name)
+                group.add_computer(computer)
+
+        if args.remove:
+            remove_computers = []
+            for computer_search in args.remove:
+                search_is_wildcard = False
+                for wildcard in WILDCARDS:
+                    if wildcard in computer_search:
+                        search_is_wildcard = True
+                        break
+
+                full_computers = []
+                if search_is_wildcard:
+                    search_results = [computer["name"] for computer in
+                                      wildcard_search(computers,
+                                                      computer_search)]
+                    full_computers.extend(search_results)
+                else:
+                    full_computers.append(computer_search)
+
+                for computer in full_computers:
+                    try:
+                        remove_computers.append(
+                            jss_connection.Computer(computer))
+                    except jss.exceptions.JSSGetError:
+                        continue
+
+            for computer in remove_computers:
+                print "Removing %s from %s" % (computer.name, group.name)
+                try:
+                    group.remove_computer(computer)
+                except ValueError:
+                    print "%s is not a member; not removing." % computer.name
+
+        if args.dry_run:
+            print group
+        else:
+            group.save()
+
+    else:
+        search_func = create_search_func(jss_connection.ComputerGroup)
+        search_func(args)
 
 def get_excluded(args):
     """Print all policies and config profiles with group excluded.

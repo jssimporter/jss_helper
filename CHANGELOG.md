@@ -16,7 +16,10 @@ All notable changes to this project will be documented in this file. This projec
 - Added action `md_excluded` for showing profiles from which a mobile device group is excluded.
 - Most actions that take a search argument will now accept Unix-shell style wildcard characters for matching. These search arguments *MUST* be single-quote escaped in Bash to avoid shell wildcard-expansion; e.g.: `jss_helper installs 'Firefox*'`.
 	- Actions incorporating wildcard searches:
+		- All object search functions (`computer`, `policy`, etc)
 		- `installs`
+		- `group` `--add/--remove` optional arguments.
+- Added `--add`, `--remove`, and `--dry-run` options to `group`. You can now add and remove any number of computers, specified by name, wildcard-name-search, or ID. If you specify `--dry-run` it doesn't save; it just prints the group XML.
 
 ### Changed
 

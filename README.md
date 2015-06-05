@@ -136,6 +136,9 @@ There are a number of advanced verbs which I wrote to help me with managing and 
 	- With no arguments will prompt you to select a policy and package. The interactive menu will initially show you policies which have newer packages available, and packages which match the existing package name. Selecting "F" from the menu gives you the full list of policies or packages. See the [Package Info](#package-info) section below for more details on proper naming conventions.
 	- Given a policy (name or ID) and a package (ID or name), will swap the old package for the new in that policy.
     - The optional argument `-u/--update_name` allows you to also update the name, by replacing the package name and the package version if found in the policy name. A policy named "Install Goat Simulator-1.2.0" would get changed to "Install Goat Simulator-1.3.1". See the [Package Info](#package-info) section for further details on naming.
+- Add and remove computers from a group with `group`, using the `--add` and `--remove` options, which can be combined with any number of ID's, names, or wildcard searches to add and remove computers.
+	- Example: `jss_helper group "Testing" --add "US800-??" --remove 500 HastursMacbook`
+	- There's also a `--dry-run` option for safety!
 - `excluded` and `md_excluded` show policies and profiles from which a computer or mobile device have been excluded.
 
 ## Package Info
