@@ -380,7 +380,7 @@ def build_argument_parser():
                            "nargs": "*"},
                  "--remove": {"help": "Computer ID's or names to remove from "
                                       "group. Wildcards may be used.",
-                           "nargs": "*"},
+                              "nargs": "*"},
                  "--dry-run": {"help": "Construct the updated XML for the "
                                        "group, but don't save. Prints "
                                        "results.",
@@ -518,31 +518,47 @@ def create_search_func(obj_method):
         args: argparser args with properties:
             search: Name or ID of object to search for.
     """
-    # pylint: disable=unused-argument
     def search_func(args):
         """Searches JSS for all objects OR a specific object."""
-
-        search_is_wildcard = False
-        if args.search:
-            for wildcard in WILDCARDS:
-                if wildcard in args.search:
-                    search_is_wildcard = True
-
-        if search_is_wildcard:
-            results = wildcard_search(obj_method(), args.search)
-        else:
-            try:
-                results = obj_method(args.search)
-            except jss.JSSGetError:
-                results = None
+        results = search_for_object(obj_method, args.search)
 
         if results is None:
             print "Object: %s does not exist!" % args.search
-        else:
+        elif len(results) > 1:
             print_object(results)
-    # pylint: enable=unused-argument
+        else:
+            for result in results:
+                print_object(result)
 
     return search_func
+
+
+def search_for_object(obj_method, search):
+    """Search handler."""
+    search_is_wildcard = False
+    if search:
+        for wildcard in WILDCARDS:
+            if wildcard in search:
+                search_is_wildcard = True
+
+    if search_is_wildcard:
+        wildcard_results = wildcard_search(obj_method(), search)
+        results = []
+        for obj in wildcard_results:
+            try:
+                results.append(obj_method(obj["name"]))
+            except jss.JSSGetError:
+                continue
+
+        if not results:
+            results = None
+    else:
+        try:
+            results = [obj_method(search)]
+        except jss.JSSGetError:
+            results = None
+
+    return results
 
 
 def get_package_info(package_name):
@@ -1096,6 +1112,7 @@ def group_search_or_modify(args):
     else:
         search_func = create_search_func(jss_connection.ComputerGroup)
         search_func(args)
+
 
 def get_excluded(args):
     """Print all policies and config profiles with group excluded.
