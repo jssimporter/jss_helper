@@ -125,48 +125,30 @@ def version_check():
         sys.exit()
 
 
-def print_object(objs):
-    """Flexible print method for lists and XML.
-
-    Prints formatted lists of ID/NAME or the XML for an object.
-
-    Args:
-        objs: List of JSSObjects or a JSSObject.
-    """
-    # TODO(Shea): Refactor into build_results_string.
-    if isinstance(objs, list) and objs:
-        width = max([int(len(str(obj.id))) for obj in objs])
-        results = []
-        for obj in objs:
-            results.append(u"ID: {:>{width}}\tNAME: {}".format(
-                obj.id, obj.name, width=width))
-        print "\n".join(results)
-    elif objs:
-        print objs
-    else:
-        print "No results found."
-
-
 def build_results_string(heading, results):
     """Format a list of results for output reporting.
 
     Args:
-        heading: String heading for results.
-        results: An iterable of match tuples, of (int ID, str name).
+        heading: String heading for results, or None for no heading..
+        results: An iterable of JSSObjects.
 
     Returns:
         Formatted report string.
     """
-    output_string = heading
+    output_string = ""
+    if heading:
+        output_string = heading
     if not output_string.endswith("\n"):
         output_string += "\n"
-    if results:
-        width = max([int(len(result[0])) for result in results])
+    if (isinstance(results, list) or isinstance(results, set)) and results:
+        width = max([int(len(str(result.id))) for result in results])
         output_strings = []
         for i in results:
             output_strings.append(u"ID: {:>{width}}\tNAME: {}".format(
-                i[0], i[1], width=width))
+                i.id, i.name, width=width))
         output_string += "\n".join(output_strings)
+    elif isinstance(results, jss.JSSObject):
+        output_string += str(results)
     else:
         output_string += "No results found."
     return output_string + "\n"
@@ -187,7 +169,7 @@ def find_objects_in_containers(search_objects, search_path, containers):
         containers: List of JSSObjects to in which to locate
             'search_objects'.
 
-    Returns: A list of tuples (object's ID, object's name) which match.
+    Returns: A list of JSSObjects which match.
     """
     results = []
     if isinstance(containers, jss.JSSObjectList):
@@ -199,7 +181,7 @@ def find_objects_in_containers(search_objects, search_path, containers):
             for element in obj.findall(search_path):
                 if (element.findtext("id") == search_object.id or
                         element.findtext("name") == search_object.name):
-                    results.append((obj.id, obj.name))
+                    results.append(obj)
     return results
 
 
@@ -525,10 +507,10 @@ def create_search_func(obj_method):
         if results is None:
             print "Object: %s does not exist!" % args.search
         elif len(results) > 1:
-            print_object(results)
+            print build_results_string(None, results)
         else:
             for result in results:
-                print_object(result)
+                print result
 
     return search_func
 
@@ -772,23 +754,17 @@ def get_scoped_to_all(containers):
             jss.OSXConfigurationProfile, or
             jss.MobileDeviceConfigurationProfile objects.
     Returns:
-        A list of tuples of (container.id, container.name). The name
-            has a message appended to it indicating an "all" scope.
+        A list of JSSObjects.
     """
     results = []
-    # TODO: This is pretty inefficient, since now every action that
-    # calls this has probably already retrieved everything!
     for container in containers:
         # pylint: disable=unidiomatic-typecheck
         if type(container) in [jss.Policy, jss.OSXConfigurationProfile]:
             if container.findtext("scope/all_computers") == "true":
-                results.append((container.id, "%s (SCOPED TO ALL COMPUTERS)" %
-                                container.name))
+                results.append(container)
         elif type(container) in [jss.MobileDeviceConfigurationProfile]:
             if container.findtext("scope/all_mobile_devices") == "true":
-                results.append((container.id,
-                                "%s (SCOPED TO ALL MOBILE DEVICES)" %
-                                container.name))
+                results.append(container)
         # pylint: enable=unidiomatic-typecheck
     return results
 
@@ -838,7 +814,7 @@ def find_groups_in_scope(groups, scopables):
             "scope" subelement (Policy, OSXConfigurationProfile,
             MobileDeviceConfigurationProfile).
 
-    Returns: A list of tuples (object's ID, object's name) which match.
+    Returns: A list of JSSObjects which match.
     """
     if isinstance(scopables, jss.JSSObjectList):
         scopables = scopables.retrieve_all()
@@ -849,9 +825,7 @@ def find_groups_in_scope(groups, scopables):
                                   jss.MobileDeviceConfigurationProfile):
         search = "scope/mobile_device_groups/mobile_device_group"
 
-    results = find_objects_in_containers(groups, search, scopables)
-    results += get_scoped_to_all(scopables)
-    return results
+    return find_objects_in_containers(groups, search, scopables)
 
 
 # Actions #####################################################################
@@ -871,10 +845,17 @@ def get_scoped(args):
     policy_heading = "Policies scoped to %s" % group.name
     output = build_results_string(policy_heading, policy_results) + "\n"
 
+    policy_results = get_scoped_to_all(policies)
+    policy_heading = "Policies scoped to all computers"
+    output += build_results_string(policy_heading, policy_results) + "\n"
+
     # Search for configuration profiles.
     configps = jss_connection.OSXConfigurationProfile()
     configp_results = find_groups_in_scope([group], configps)
     configp_heading = "Configuration profiles scoped to %s" % group.name
+    output += build_results_string(configp_heading, configp_results) + "\n"
+    configp_results = get_scoped_to_all(configps)
+    configp_heading = "Configuration profiles scoped to all computers"
     output += build_results_string(configp_heading, configp_results)
 
     print output
@@ -893,7 +874,10 @@ def get_md_scoped(args):
     configps = jss_connection.MobileDeviceConfigurationProfile()
     results = find_groups_in_scope([group], configps)
     output = build_results_string("Profiles scoped to %s" % group.name,
-                                  results)
+                                  results) + "\n"
+    results = get_scoped_to_all(configps)
+    output += build_results_string("Profiles scoped to all mobile devices",
+                                   results)
 
     print output
 
@@ -907,40 +891,44 @@ def get_group_scope_diff(args):
             group2: Name or ID of second computer group.
     """
     # TODO: This can just run scoped twice and then do the file diff.
-    search = "scope/computer_groups/computer_group"
     jss_connection = JSSConnection.get()
     policies = jss_connection.Policy()
     policies.sort()
     group1 = jss_connection.ComputerGroup(args.group1)
     group2 = jss_connection.ComputerGroup(args.group2)
-    results1 = find_objects_in_containers([group1], search, policies)
-    results2 = find_objects_in_containers([group2], search, policies)
+    results1 = find_groups_in_scope([group1], policies)
+    results2 = find_groups_in_scope([group2], policies)
     scoped_to_all = get_scoped_to_all(policies)
-    results1 += scoped_to_all
-    results2 += scoped_to_all
 
     configps = jss_connection.OSXConfigurationProfile()
     configps.sort()
-    configp_results1 = find_objects_in_containers([group1], search, configps)
-    configp_results2 = find_objects_in_containers([group2], search, configps)
+    configp_results1 = find_groups_in_scope([group1], configps)
+    configp_results2 = find_groups_in_scope([group2], configps)
     configp_scoped_to_all = get_scoped_to_all(configps)
-    configp_results1 += configp_scoped_to_all
-    configp_results2 += configp_scoped_to_all
+
     # I tried to do this with the tempfile module, but the files always
     # ended up being size 0 and dissappearing, despite delete=False.
     with open("/tmp/file1", mode="w") as file1:
         output = build_results_string("Policies scoped to %s" % group1.name,
-                                      results1)
-        output += build_results_string("\nConfiguration profiles scoped to %s"
-                                       % group1.name, configp_results1)
+                                      results1) + "\n"
+        policy_heading = "Policies scoped to all computers"
+        output += build_results_string(policy_heading, scoped_to_all) + "\n"
+        output += build_results_string("Configuration profiles scoped to %s"
+                                       % group1.name, configp_results1) + "\n"
+        configp_heading = "Configuration profiles scoped to all computers"
+        output += build_results_string(configp_heading, configp_scoped_to_all)
         # Add a newline to keep diff from complaining.
         file1.write(output + "\n")
         file1_name = file1.name
     with open("/tmp/file2", mode="w") as file2:
         output = build_results_string("Policies scoped to %s" % group2.name,
-                                      results2)
-        output += build_results_string("\nConfiguration profiles scoped to %s"
+                                      results2) + "\n"
+        policy_heading = "Policies scoped to all computers"
+        output += build_results_string(policy_heading, scoped_to_all) + "\n"
+        output += build_results_string("Configuration profiles scoped to %s"
                                        % group2.name, configp_results2)
+        configp_heading = "Configuration profiles scoped to all computers"
+        output += build_results_string(configp_heading, configp_scoped_to_all)
         # Add a newline to keep diff from complaining.
         file2.write(output + "\n")
         file2_name = file2.name
@@ -964,28 +952,29 @@ def get_md_scope_diff(args):
             group1: Name or ID of first group.
             group2: Name or ID of second group.
     """
-    search = "scope/mobile_device_groups/mobile_device_group"
     jss_connection = JSSConnection.get()
     profiles = jss_connection.MobileDeviceConfigurationProfile()
     group1 = jss_connection.MobileDeviceGroup(args.group1)
     group2 = jss_connection.MobileDeviceGroup(args.group2)
-    results1 = find_objects_in_containers([group1], search, profiles)
-    results2 = find_objects_in_containers([group2], search, profiles)
+    results1 = find_groups_in_scope([group1], profiles)
+    results2 = find_groups_in_scope([group2], profiles)
     scoped_to_all = get_scoped_to_all(profiles)
-    results1 += scoped_to_all
-    results2 += scoped_to_all
 
     # I tried to do this with the tempfile module, but the files always
     # ended up being size 0 and dissappearing, despite delete=False.
     with open("/tmp/file1_name", mode="w") as file1:
         output = build_results_string("Profiles scoped to %s" % group1.name,
-                                      results1)
+                                      results1) + "\n"
+        output += build_results_string("Profiles scoped to all mobile devices",
+                                       scoped_to_all)
         # Add a newline to keep diff from complaining.
         file1.write(output + "\n")
         file1_name = file1.name
     with open("/tmp/file2_name", mode="w") as file2:
         output = build_results_string("Profiles scoped to %s" % group2.name,
-                                      results2)
+                                      results2) + "\n"
+        output += build_results_string("Profiles scoped to all mobile devices",
+                                       scoped_to_all)
         # Add a newline to keep diff from complaining.
         file2.write(output + "\n")
         file2_name = file2.name
@@ -1182,7 +1171,8 @@ def get_package_policies(args):
     search = "package_configuration/packages/package"
     jss_connection = JSSConnection.get()
     policies = jss_connection.Policy()
-    packages = wildcard_search(jss_connection.Package(), args.package)
+    packages = search_for_object(jss_connection.Package, args.package)
+
     results = set(find_objects_in_containers(packages, search, policies))
     output = build_results_string("Policies which install '%s'" % args.package,
                                   results)
