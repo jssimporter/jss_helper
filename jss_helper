@@ -110,7 +110,6 @@ class JSSConnection(object):
         return cls._jss
 
 
-
 # Utility Functions ###########################################################
 def version_check():
     """Ensure we have the right version of python-jss."""
@@ -122,15 +121,16 @@ def version_check():
     if python_jss_version < REQUIRED_PYTHON_JSS_VERSION:
         print "Requires python-jss version: %s. Installed: %s" % (
             (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
-        sys.exit()
+        sys.exit(1)
 
 
 def build_results_string(heading, results):
-    """Format a list of results for output reporting.
+    """Format results for output reporting.
 
     Args:
-        heading: String heading for results, or None for no heading..
-        results: An iterable of JSSObjects.
+        heading: String heading for results, or None for no heading.
+        results: An iterable of JSSObjects, a JSSObjectList, or a
+            single JSSObject..
 
     Returns:
         Formatted report string.
@@ -138,17 +138,21 @@ def build_results_string(heading, results):
     output_string = ""
     if heading:
         output_string = heading
-    if not output_string.endswith("\n"):
-        output_string += "\n"
-    if (isinstance(results, list) or isinstance(results, set)) and results:
-        width = max([int(len(str(result.id))) for result in results])
-        output_strings = []
-        for i in results:
-            output_strings.append(u"ID: {:>{width}}\tNAME: {}".format(
-                i.id, i.name, width=width))
-        output_string += "\n".join(output_strings)
-    elif isinstance(results, jss.JSSObject):
-        output_string += str(results)
+        if not output_string.endswith("\n"):
+            output_string += "\n"
+    # Print column aligned lists of ID and Name.
+    if results:
+        if (all([isinstance(result, jss.JSSObject) for result in results]) or
+            (isinstance(results, jss.JSSObjectList) and len(results) > 0)):
+            width = max([int(len(str(result.id))) for result in results])
+            output_strings = []
+            for i in results:
+                output_strings.append(u"ID: {:>{width}}\tNAME: {}".format(
+                    i.id, i.name, width=width))
+            output_string += "\n".join(output_strings)
+        # Just print the object.
+        elif isinstance(results, jss.JSSObject):
+            output_string += str(results)
     else:
         output_string += "No results found."
     return output_string + "\n"
@@ -162,11 +166,11 @@ def find_objects_in_containers(search_objects, search_path, containers):
     container-type JSS Object for a reference to another object.
 
     Args:
-        search_objects: A list or jss.JSSObjectList of target JSSObjects to
-            search for in 'containers'.
+        search_objects: A list of JSSObjects or a jss.JSSObjectList
+            to search for in 'containers'.
         search_path: A str xpath pointing to the subelement of
             'containers' to search within.
-        containers: List of JSSObjects to in which to locate
+        containers: List of JSSObjects in which to locate
             'search_objects'.
 
     Returns: A list of JSSObjects which match.
@@ -176,12 +180,14 @@ def find_objects_in_containers(search_objects, search_path, containers):
         full_objects = containers.retrieve_all()
     else:
         full_objects = containers
-    for search_object in search_objects:
-        for obj in full_objects:
-            for element in obj.findall(search_path):
-                if (element.findtext("id") == search_object.id or
-                        element.findtext("name") == search_object.name):
-                    results.append(obj)
+    #for search_object in search_objects:
+    search_ids = [obj.id for obj in search_objects]
+    search_names = [obj.name for obj in search_objects]
+    for obj in full_objects:
+        for element in obj.findall(search_path):
+            if (element.findtext("id") in search_ids or
+                    element.findtext("name") in search_names):
+                results.append(obj)
     return results
 
 
@@ -306,6 +312,7 @@ def display_options_list(options):
     """
     # Justify the columns so the option numbers don't push the options
     # out of a nice left-justified column.
+    # TODO: Very similar to build_results_string.
 
     # Figure out the number of options, then the length of that number.
     length = len(str(len(options))) + len("\t")
@@ -363,11 +370,10 @@ def build_argument_parser():
                  "--remove": {"help": "Computer ID's or names to remove from "
                                       "group. Wildcards may be used.",
                               "nargs": "*"},
-                 "--dry-run": {"help": "Construct the updated XML for the "
+                 "--dry_run": {"help": "Construct the updated XML for the "
                                        "group, but don't save. Prints "
                                        "results.",
                                "action": "store_true"}}}
-        #create_search_func(jss_connection.ComputerGroup),
     subparsers["imaging_config"] = {
         "help": "List all Casper Imaging computer configurations, or search "
                 "for an individual computer configuration.",
@@ -396,7 +402,8 @@ def build_argument_parser():
         "help": "Lists all policies and imaging configurations which install "
                 "a package.",
         "func": get_package_policies,
-        "args": {"package": {"help": "ID or name of a package."}}}
+        "args": {"package": {"help": "ID, name, or wildcard name of "
+                                     "package(s)."}}}
     subparsers["scope_diff"] = {
         "help": "Show the difference between two groups' scoped policies and "
                 "configuration profiles.",
@@ -497,15 +504,31 @@ def create_search_func(obj_method):
     """Generates a function to perform basic list and xml queries.
 
     Args:
-        args: argparser args with properties:
-            search: Name or ID of object to search for.
+        obj_method: A function that searches for a JSSObject.
+            Probably one of the jss.JSS helper methods.
+            (e.g. jss.JSS.Package)
+
+    Returns:
+        A function that takes one argument of Argparser args, with a
+        'search' property to be passed to the obj_method if needed.
     """
     def search_func(args):
-        """Searches JSS for all objects OR a specific object."""
+        """Searches JSS for all objects OR a specific object.
+
+        Prints results as a list or an individual object differently
+        for purposes of output.
+
+        Args:
+            args: argparser args with properties:
+                search: Name or ID of object to search for.
+        """
         results = search_for_object(obj_method, args.search)
 
         if results is None:
             print "Object: %s does not exist!" % args.search
+        # TODO: Should this be isinstance(results, JSSObjectList) and
+        # drop the wrapping of obj_method(search) in a list in
+        # search_for_objects?
         elif len(results) > 1:
             print build_results_string(None, results)
         else:
@@ -535,10 +558,16 @@ def search_for_object(obj_method, search):
         if not results:
             results = None
     else:
-        try:
-            results = [obj_method(search)]
-        except jss.JSSGetError:
-            results = None
+        if search:
+            try:
+                results = [obj_method(search)]
+            except jss.JSSGetError:
+                results = None
+        else:
+            try:
+                results = obj_method()
+            except jss.JSSGetError:
+                results = None
 
     return results
 
@@ -759,6 +788,7 @@ def get_scoped_to_all(containers):
     results = []
     for container in containers:
         # pylint: disable=unidiomatic-typecheck
+        # TODO: This can be slightly compacted.
         if type(container) in [jss.Policy, jss.OSXConfigurationProfile]:
             if container.findtext("scope/all_computers") == "true":
                 results.append(container)
@@ -786,7 +816,7 @@ def wildcard_search(objects, pattern, case_sensitive=True):
             case sensitivity. Defaults to "True".
 
     Returns:
-        List of all matches.
+        List of all JSSObjects which match the wildcard.
     """
     # The fnmatch module uses OS-specific case sensitivity settings.
     # We are not matching filenames, so we don't care what the
@@ -810,9 +840,9 @@ def find_groups_in_scope(groups, scopables):
 
     Args:
         groups: A list of jss ComputerGroup or MobileDeviceGroup objects.
-        scopables: A list or jss.JSSObjectList of objects which have a
-            "scope" subelement (Policy, OSXConfigurationProfile,
-            MobileDeviceConfigurationProfile).
+        scopables: A list of JSSObjects or a jss.JSSObjectList of some
+            types which have a "scope" subelement (Policy,
+            OSXConfigurationProfile, MobileDeviceConfigurationProfile).
 
     Returns: A list of JSSObjects which match.
     """
@@ -1134,7 +1164,6 @@ def _get_exclusions_by_type(group):
         group: A jss.ComputerGroup or jss.MobileDeviceGroup object.
     """
     jss_connection = JSSConnection.get()
-    #group = jss_connection.group_type(search)
     scopables = []
     header = " with %s excluded from scope." % group.name
     base_search = "scope/exclusions/%s_groups/%s_group"
@@ -1153,12 +1182,11 @@ def _get_exclusions_by_type(group):
              "heading": "Mobile Device Configuration Profiles"})
 
     for item in scopables:
-        # TODO: Finish refactoring
+        # TODO: Finish refactoring (list wrapping of group)
         results = find_objects_in_containers([group], search,
                                              item["containers"])
         output = build_results_string(item["heading"] + header, results)
         print output
-        print
 
 
 def get_package_policies(args):
@@ -1166,7 +1194,7 @@ def get_package_policies(args):
 
     Args:
         args: argparser args with properties:
-            package: Name or ID of package.
+            package: ID, name, or wildcard-search-name of package.
     """
     search = "package_configuration/packages/package"
     jss_connection = JSSConnection.get()
@@ -1175,16 +1203,15 @@ def get_package_policies(args):
 
     results = set(find_objects_in_containers(packages, search, policies))
     output = build_results_string("Policies which install '%s'" % args.package,
-                                  results)
-    print output + "\n"
+                                  results) + "\n"
 
     search = "packages/package"
     imaging_configs = jss_connection.ComputerConfiguration()
     ic_results = set(find_objects_in_containers(packages, search,
                                                 imaging_configs))
-    output = build_results_string("Imaging configs which install '%s'" %
-                                  args.package, ic_results)
-    print output + "\n"
+    output += build_results_string("Imaging configs which install '%s'" %
+                                   args.package, ic_results)
+    print output
 
 
 # pylint: disable=too-many-locals
