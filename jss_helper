@@ -180,7 +180,7 @@ def find_objects_in_containers(search_objects, search_path, containers):
         full_objects = containers.retrieve_all()
     else:
         full_objects = containers
-    #for search_object in search_objects:
+
     search_ids = [obj.id for obj in search_objects]
     search_names = [obj.name for obj in search_objects]
     for obj in full_objects:
