@@ -14,7 +14,9 @@ Where things get interesting, however, are the advanced features. jss_helper let
 
 ## Installation
 
-Copy jss_helper wherever you may want it (possibly someplace in your path).
+Either grab the package from the releases section, or follow below for manual installation.
+
+Copy jss_helper and jss_helper_lib somewhere in your path. (Recommended:  `/usr/local/bin`)
 
 jss_helper requires python-jss, a python module for interacting with the JSS API.
 

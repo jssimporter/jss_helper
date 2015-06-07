@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file. This projec
 	- `md_scoped`
 	- `scope_diff`
 	- `md_scope_diff`
+- Moved all code into a python package. This means both `jss_helper` and `jss_helper_lib` should be in the same folder (see README for new installation details) or use the installer package.
 
 ### Known Issues
 
