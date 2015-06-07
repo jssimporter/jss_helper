@@ -473,7 +473,8 @@ def build_argument_parser():
     batch_scope_subparser = subparser.add_parser(
         "batch_scope", help=arg_help, description=arg_help)
     batch_scope_subparser.add_argument(
-        "group", help="Name of group to scope policies.")
+        "group", help="Name, ID, or wildcard search of group to scope "
+                      "policies.")
     arg_help = "A space delimited list of policy IDs."
     batch_scope_subparser.add_argument("policy", help=arg_help, nargs="*")
     batch_scope_subparser.set_defaults(func=batch_scope)
@@ -1027,18 +1028,21 @@ def batch_scope(args):
 
     Args:
         args: argparser args with properties:
-            group: Name or ID of computer group.
+            group: Name, wildcard search, or ID of computer group.
             policy: List of ID's or names of policies to scope.
+                Wildcard searches accepted.
     """
     jss_connection = JSSConnection.get()
-    group = jss_connection.ComputerGroup(args.group)
-    print "Scoping to group: %s" % group.name
+    groups = search_for_object(jss_connection.ComputerGroup, args.group)
+    print "Scoping to groups: %s" % ", ".join([group.name for group in groups])
     print 79 * "-"
     for policy_query in args.policy:
-        policy = jss_connection.Policy(policy_query)
-        policy.add_object_to_scope(group)
-        policy.save()
-        print "%s: Success." % policy.name
+        policies = search_for_object(jss_connection.Policy, policy_query)
+        for policy in policies:
+            for group in groups:
+                policy.add_object_to_scope(group)
+            policy.save()
+            print "%s: Success." % policy.name
 
 
 def group_search_or_modify(args):

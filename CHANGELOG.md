@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file. This projec
 		- All object search functions (`computer`, `policy`, etc)
 		- `installs`
 		- `group` `--add/--remove` optional arguments.
+		- `batch_scope` (`group` and `policy` arguments).
 - Added `--add`, `--remove`, and `--dry-run` options to `group`. You can now add and remove any number of computers, specified by name, wildcard-name-search, or ID. If you specify `--dry-run` it doesn't save; it just prints the group XML.
 
 ### Changed
@@ -31,6 +32,10 @@ All notable changes to this project will be documented in this file. This projec
 	- `md_scoped`
 	- `scope_diff`
 	- `md_scope_diff`
+
+### Known Issues
+
+- Policies which install multiple packages won't work correctly with `promote` command auto-detection.
 
 ## [2.0.0] - 2015-05-28 - Deep Fried Codpiece
 This release changes the names of verbs and simplifies the arguments for running them. Therefore, there has been a major version increment!

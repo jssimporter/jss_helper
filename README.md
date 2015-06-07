@@ -132,6 +132,8 @@ There are a number of advanced verbs which I wrote to help me with managing and 
 - `scope_diff` and `md_scope_diff` compare the policies and profiles scoped to two different groups, using `diff` to display the differences.
 - `batch_scope` allows you to scope a number of policies to a group.
 	- Example: `jss_helper batch_scope "Testing Group" 52 100 242 40 6273`
+	- Example: `jss_helper batch_scope "US ??? Lab" "Install Printer Drivers: *" 52 100`
+		- Would scope all printer driver policies, and policies 52 and 100 to all groups found in the wildcard search "US ??? Lab".
 - `promote` allows you to update a package installation policy with a newer version.
 	- With no arguments will prompt you to select a policy and package. The interactive menu will initially show you policies which have newer packages available, and packages which match the existing package name. Selecting "F" from the menu gives you the full list of policies or packages. See the [Package Info](#package-info) section below for more details on proper naming conventions.
 	- Given a policy (name or ID) and a package (ID or name), will swap the old package for the new in that policy.
