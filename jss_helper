@@ -345,14 +345,16 @@ def build_argument_parser():
     subparsers["computer"] = {
         "help": "List all computers, or search for an individual computer.",
         "func": create_search_func(jss_connection.Computer),
-        "args": {"search": {"help": "ID or name of computer.",
+        "args": {"search": {"help": "ID or name (wildcards allowed) of "
+                                    "computer.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["configp"] = {
         "help": "List all configuration profiles, or search for an individual "
                 "configuration profile.",
         "func": create_search_func(jss_connection.OSXConfigurationProfile),
-        "args": {"search": {"help": "ID or name of profile.",
+        "args": {"search": {"help": "ID or name (wildcards allowed) of "
+                                    "profile.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["excluded"] = {
@@ -363,7 +365,8 @@ def build_argument_parser():
     subparsers["group"] = {
         "help": "List all computer groups, or search for an individual group.",
         "func": group_search_or_modify,
-        "args": {"search": {"help": "ID or name of computer group.",
+        "args": {"search": {"help": "ID or name (wildcards allowed) of "
+                                    "computer group.",
                             "default": None,
                             "nargs": "?"},
                  "--add": {"help": "Computer ID's or names to add to group. "
@@ -380,19 +383,22 @@ def build_argument_parser():
         "help": "List all Casper Imaging computer configurations, or search "
                 "for an individual computer configuration.",
         "func": create_search_func(jss_connection.ComputerConfiguration),
-        "args": {"search": {"help": "ID or name of computer configuration.",
+        "args": {"search": {"help": "ID or name (wildcards allowed) of "
+                                    "computer configuration.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["package"] = {
         "help": "List of all packages, or search for an individual package.",
         "func": create_search_func(jss_connection.Package),
-        "args": {"search": {"help": "ID or name of package.",
+        "args": {"search": {"help": "ID or name (wildcards allowed) of "
+                                    "package.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["policy"] = {
         "help": "List all policies, or search for an individual policy.",
         "func": create_search_func(jss_connection.Policy),
-        "args": {"search": {"help": "ID or name of policy.",
+        "args": {"search": {"help": "ID or name (wildcards allowed) of "
+                                    "policy.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["scoped"] = {
@@ -415,21 +421,24 @@ def build_argument_parser():
     subparsers["category"] = {
         "help": "List all categories, or search for an individual category.",
         "func": create_search_func(jss_connection.Category),
-        "args": {"search": {"help": "ID or name of category.",
+        "args": {"search": {"help": "ID or name (wildcards allowed) of "
+                                    "category.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["md"] = {
         "help": "List all mobile devices, or search for an indvidual mobile "
                 "device.",
         "func": create_search_func(jss_connection.MobileDevice),
-        "args": {"search": {"help": "ID or name of mobile device.",
+        "args": {"search": {"help": "ID or name (wildcards allowed) of mobile "
+                                    "device.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["md_group"] = {
         "help": "List all mobile device groups, or search for an individual "
                 "mobile device group.",
         "func": create_search_func(jss_connection.MobileDeviceGroup),
-        "args": {"search": {"help": "ID or name of mobile device group.",
+        "args": {"search": {"help": "ID or name (wildcards allowed) of mobile "
+                                    "device group.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["md_configp"] = {
@@ -437,8 +446,8 @@ def build_argument_parser():
                 "an individual mobile device configuration profile.",
         "func": create_search_func(
             jss_connection.MobileDeviceConfigurationProfile),
-        "args": {"search": {"help": "ID or name of mobile device configuration"
-                                    " profile.",
+        "args": {"search": {"help": "ID or name (wildcards allowed) of mobile "
+                                    "device configuration profile.",
                             "default": None,
                             "nargs": "?"}}}
     subparsers["md_scoped"] = {
@@ -475,7 +484,8 @@ def build_argument_parser():
     batch_scope_subparser.add_argument(
         "group", help="Name, ID, or wildcard search of group to scope "
                       "policies.")
-    arg_help = "A space delimited list of policy IDs."
+    arg_help = ("A space delimited list of policy IDs or names. Wildcards "
+                "allowed.")
     batch_scope_subparser.add_argument("policy", help=arg_help, nargs="*")
     batch_scope_subparser.set_defaults(func=batch_scope)
 
@@ -542,7 +552,23 @@ def create_search_func(obj_method):
 
 
 def search_for_object(obj_method, search):
-    """Search handler."""
+    """Return objects matching a search pattern.
+
+    Manages making the appropriate searches based on the type of
+    search query.
+
+    Args:
+        obj_method: Func to call to perform the search. Assumes that
+            the second argument, search, will be passable as the sole
+            argument to that func. The intention is to pass a search
+            method from the jss.JSS object, e.g.
+            "jss_connection.Package"
+        search: A name, ID, or wildcard search (see func
+            wildcard_search). Used as the argument to "obj_method".
+
+    Returns:
+        A list of JSSObjects, a JSSObjectList, or None.
+    """
     search_is_wildcard = False
     if search:
         for wildcard in WILDCARDS:
