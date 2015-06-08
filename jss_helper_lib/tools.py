@@ -32,15 +32,6 @@ import jss
 
 
 __version__ = "2.0.1"
-__all__ = ["version_check", "build_results_string",
-           "find_objects_in_containers", "_input_menu_text", "prompt_user",
-           "in_range", "sort_package_list", "display_options_list",
-           "create_search_func", "search_for_object", "get_package_info",
-           "update_name", "get_newest_pkg", "log_warning",
-           "open_policy_log_in_browser", "_build_package_version_dict",
-           "_get_updatable_policies", "_add_flags_to_list",
-           "get_scoped_to_all", "wildcard_search", "find_groups_in_scope"]
-
 REQUIRED_PYTHON_JSS_VERSION = StrictVersion("0.3.4")
 WILDCARDS = "*?[]"
 
