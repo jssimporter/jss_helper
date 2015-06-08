@@ -18,9 +18,9 @@
 """jss_helper_lib"""
 
 
-import jss_helper_lib.actions
-import jss_helper_lib.jssconnection
-import jss_helper_lib.tools
+from . import actions
+from . import jssconnection
+from . import tools
 
 
 __version__ = "2.0.1"
