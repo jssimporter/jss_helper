@@ -45,10 +45,12 @@ class JSSConnection(object):
         cls._jss_prefs = jss.JSSPrefs()
         cls._jss = jss.JSS(jss_prefs=cls._jss_prefs)
 
-        # TODO: How to test for the existence of these properties?
         if args:
-            cls._jss.session.verify = args.ssl
-            cls._jss.verbose = args.verbose
+            args_dict = vars(args)
+            if "ssl" in args_dict:
+                cls._jss.session.verify = args.ssl
+            if "verbose" in args_dict:
+                cls._jss.verbose = args.verbose
 
     @classmethod
     def get(cls):
