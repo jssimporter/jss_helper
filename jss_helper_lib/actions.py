@@ -26,15 +26,11 @@ import subprocess
 import sys
 
 import jss
-from jss_helper_lib.jssconnection import JSSConnection
+from jss_helper_lib.jss_connection import JSSConnection
 from . import tools
 
 
 __version__ = "2.0.1"
-__all__ = ["build_argument_parser", "get_scoped", "get_md_scoped",
-           "get_group_scope_diff", "get_md_scope_diff", "batch_scope",
-           "group_search_or_modify", "get_excluded", "get_md_excluded",
-           "_get_exclusions_by_type", "get_package_policies", "promote"]
 
 
 def build_argument_parser():
@@ -44,7 +40,8 @@ def build_argument_parser():
     """
     # Create our argument parser
     parser = argparse.ArgumentParser(description="Query the JSS.")
-    parser.add_argument("-v", action="store_true", help="Verbose output.")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Verbose output.")
     parser.add_argument("--ssl", default=False, action="store_true",
                         help="Use SSL verification")
     subparser = parser.add_subparsers(dest="subparser_name", title="Actions",
@@ -226,8 +223,6 @@ def build_argument_parser():
     return parser
 
 
-
-# Actions #####################################################################
 def get_scoped(args):
     """Print all policies and config profiles scoped to a group.
 
@@ -623,10 +618,12 @@ def promote(args):
         policy_list = jss_connection.Policy()
         print "Retrieving %i policies. Please wait..." % len(policy_list)
         all_policies = policy_list.retrieve_all()
+        all_packages = jss_connection.Package()
 
         # Get lists of policies with available updates, and all
         # policies which install packages.
-        with_updates = tools._get_updatable_policies(all_policies)
+        with_updates = tools._get_updatable_policies(all_policies,
+                                                     all_packages)
         install_policies = [
             policy.name for policy in all_policies if
             int(policy.findtext("package_configuration/packages/size")) > 0]
@@ -674,5 +671,6 @@ def promote(args):
             print "Unable to update policy name!"
 
     policy.save()
-    tools.log_warning(policy)
+    url = JSSConnection.get().base_url
+    tools.log_warning(url, policy)
 # pylint: enable=too-many-locals

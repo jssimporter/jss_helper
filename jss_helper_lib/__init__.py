@@ -15,11 +15,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-"""jss_helper_lib"""
+"""jss_helper_lib
+
+JSS actions and helper functions for jss_helper.
+"""
 
 
 from . import actions
-from . import jssconnection
+from jss_connection import JSSConnection
 from . import tools
 
 

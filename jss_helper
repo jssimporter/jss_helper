@@ -17,7 +17,7 @@
 
 """jss_helper
 
-Perform queries of objects on a JAMF Software Server.
+Query and manipulate objects on a JAMF Software Server.
 
 Requires: python-jss.
 usage: jss_helper [-h] [-v] [--ssl]  ...
@@ -76,21 +76,23 @@ Actions:
 
 import sys
 
-from jss_helper_lib.tools import (version_check, JSSConnection)
-from jss_helper_lib.actions import build_argument_parser
+from jss_helper_lib import actions
+from jss_helper_lib import JSSConnection
+from jss_helper_lib.tools import version_check
 
 
 def main():
     """Run as a cli command."""
     version_check()
-    jss_connection = JSSConnection.get()
 
-    parser = build_argument_parser()
+    parser = actions.build_argument_parser()
     args = parser.parse_args()
-    if args.v:
-        jss_connection.verbose = True
-    # TODO: Add a toggle method...
-    jss_connection.session.verify = args.ssl
+
+    # Ensure that JSSConnection has the same configuration in all
+    # namespaces.
+    JSSConnection.setup(args)
+    actions.JSSConnection.setup(args)
+    jss_connection = JSSConnection.get()
 
     try:
         args.func(args)

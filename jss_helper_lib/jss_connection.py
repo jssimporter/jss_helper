@@ -24,19 +24,31 @@ Class for managing a JSS connection.
 import jss
 
 
-__all__ = ["JSSConnection"]
-
-
 class JSSConnection(object):
     """Class for providing a single JSS connection."""
     _jss_prefs = None
     _jss = None
 
     @classmethod
-    def setup(cls):
-        """Set up the jss connection class variable."""
+    def setup(cls, args=None):
+        """Set up the jss connection class variable.
+
+        Each client that imports jss_connection.JSSConnection has its
+        own class variables. This function will configure properties on
+        the current namespace's JSSConnection prior to use.
+
+        Args:
+            args: Argparser namespace with properties:
+                ssl: (Bool) Verify SSL traffic.
+                verbose: (Bool) Verbose output.
+        """
         cls._jss_prefs = jss.JSSPrefs()
         cls._jss = jss.JSS(jss_prefs=cls._jss_prefs)
+
+        # TODO: How to test for the existence of these properties?
+        if args:
+            cls._jss.session.verify = args.ssl
+            cls._jss.verbose = args.verbose
 
     @classmethod
     def get(cls):

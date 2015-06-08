@@ -29,7 +29,6 @@ import subprocess
 import sys
 
 import jss
-from jss_helper_lib.jssconnection import JSSConnection
 
 
 __version__ = "2.0.1"
@@ -424,7 +423,7 @@ def get_newest_pkg(options):
     return result
 
 
-def log_warning(policy):
+def log_warning(url, policy):
     """Print warning about flushing the logs if triggers in policy."""
     if policy.findtext("general/frequency") != "Ongoing":
         triggers = ["trigger_checkin", "trigger_enrollment_complete",
@@ -436,20 +435,20 @@ def log_warning(policy):
             # Value can be string "false" or "" for "trigger_other".
             if value not in [None, "False"]:
                 print "Remember to flush the policy logs!"
-                open_policy_log_in_browser(policy)
+                open_policy_log_in_browser(url, policy)
                 break
 
 
-def open_policy_log_in_browser(policy):
+def open_policy_log_in_browser(jss_url, policy):
     """Open a policy's log page in the default browser."""
-    url = JSSConnection.get().base_url + "/policies.html?id=%s&o=l" % policy.id
+    url = jss_url + "/policies.html?id=%s&o=l" % policy.id
     if jss.tools.is_linux():
         subprocess.check_call(["xdg-open", url])
     elif jss.tools.is_osx():
         subprocess.check_call(["open", url])
 
 
-def _build_package_version_dict():
+def _build_package_version_dict(package_list):
     """Build a dictionary of package products with multiple versions.
 
     Returns:
@@ -458,7 +457,7 @@ def _build_package_version_dict():
             value: List of package versions of type
                 distutil.version.LooseVersion
     """
-    packages = [package.name for package in JSSConnection.get().Package()]
+    packages = [package.name for package in package_list]
     package_version_dict = {}
     for package in packages:
         package_name, package_version = get_package_info(package)
@@ -479,7 +478,7 @@ def _build_package_version_dict():
     return multiples
 
 
-def _get_updatable_policies(policies):
+def _get_updatable_policies(policies, packages):
     """Get a list of policies where newer pkg versions are available.
 
     Packages must have names which can be successfully split into
@@ -493,7 +492,7 @@ def _get_updatable_policies(policies):
         package that is older than another package available on the
         JSS.
     """
-    multiples = _build_package_version_dict()
+    multiples = _build_package_version_dict(packages)
 
     # For each policy, lookup any packages it installs in the multiples
     # dictionary and see if there is a newer version available.
