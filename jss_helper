@@ -78,12 +78,12 @@ import sys
 
 from jss_helper_lib import actions
 from jss_helper_lib import JSSConnection
-from jss_helper_lib.tools import version_check
+from jss_helper_lib import tools
 
 
 def main():
     """Run as a cli command."""
-    version_check()
+    tools.version_check()
 
     parser = actions.build_argument_parser()
     args = parser.parse_args()

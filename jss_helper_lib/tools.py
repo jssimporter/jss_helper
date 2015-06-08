@@ -615,3 +615,44 @@ def find_groups_in_scope(groups, scopables):
         search = "scope/mobile_device_groups/mobile_device_group"
 
     return find_objects_in_containers(groups, search, scopables)
+
+
+def build_group_members(obj_search_method, searches):
+    """Given a list of searches, build a list of all results.
+
+    Args:
+        obj_search_method: jss.JSS search method for the desired device
+            type (e.g. jss.JSS.Computer or jss.JSS.MobileDevice).
+        searches: List of searches to perform (with search_for_object).
+
+    Returns:
+        List of JSSObjects that match the searches.
+    """
+    devices = [device for obj_search in searches for device in
+               search_for_object(obj_search_method, obj_search)]
+    return devices
+
+
+def add_group_members(group, members):
+    """Add list of members to computer or md group."""
+    if isinstance(group, jss.ComputerGroup):
+        add_method = group.add_computer
+    elif isinstance(group, jss.MobileDeviceGroup):
+        add_method = group.add_mobile_device
+    for member in members:
+        print "Adding %s to %s" % (member.name, group.name)
+        add_method(member)
+
+
+def remove_group_members(group, members):
+    """Remove list of members to computer or md group."""
+    if isinstance(group, jss.ComputerGroup):
+        remove_method = group.remove_computer
+    elif isinstance(group, jss.MobileDeviceGroup):
+        remove_method = group.remove_mobile_device
+    for member in members:
+        print "Removing %s from %s" % (member.name, group.name)
+        try:
+            remove_method(member)
+        except ValueError:
+            print "%s is not a member; not removing." % member.name

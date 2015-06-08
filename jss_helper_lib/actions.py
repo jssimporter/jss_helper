@@ -74,7 +74,7 @@ def build_argument_parser():
         "args": {"group": {"help": "ID or name of group."}}}
     subparsers["group"] = {
         "help": "List all computer groups, or search for an individual group.",
-        "func": group_search_or_modify,
+        "func": computer_group_search_or_modify,
         "args": {"search": {"help": "ID or name (wildcards allowed) of "
                                     "computer group.",
                             "default": None,
@@ -146,11 +146,21 @@ def build_argument_parser():
     subparsers["md_group"] = {
         "help": "List all mobile device groups, or search for an individual "
                 "mobile device group.",
-        "func": tools.create_search_func(jss_connection.MobileDeviceGroup),
+        "func": md_group_search_or_modify,
         "args": {"search": {"help": "ID or name (wildcards allowed) of mobile "
                                     "device group.",
                             "default": None,
-                            "nargs": "?"}}}
+                            "nargs": "?"},
+                 "--add": {"help": "Mobile device ID's or names to add to "
+                                   "group. Wildcards may be used.",
+                           "nargs": "*"},
+                 "--remove": {"help": "Mobile Device ID's or names to remove "
+                                      "from group. Wildcards may be used.",
+                              "nargs": "*"},
+                 "--dry_run": {"help": "Construct the updated XML for the "
+                                       "group, but don't save. Prints "
+                                       "results.",
+                               "action": "store_true"}}}
     subparsers["md_configp"] = {
         "help": "List all mobile device configuration profiles, or search for "
                 "an individual mobile device configuration profile.",
@@ -412,7 +422,7 @@ def batch_scope(args):
             print "%s: Success." % policy.name
 
 
-def group_search_or_modify(args):
+def computer_group_search_or_modify(args):
     """Perform a group search or add/remove computers from group.
 
     Args:
@@ -423,39 +433,63 @@ def group_search_or_modify(args):
                 remove.
             dry_run: Bool whether to save or just print group XML.
     """
-    # TODO: There's a lot of duplication and need of refactoring here.
     jss_connection = JSSConnection.get()
+    group_search_method = jss_connection.ComputerGroup
+    member_search_method = jss_connection.Computer
+    _group_search_or_modify(group_search_method, member_search_method, args)
+
+
+def md_group_search_or_modify(args):
+    """Perform a group search or add/remove mobile devices from group.
+
+    Args:
+        args: argparser args with properties:
+            search: Name or ID of computer group.
+            add: List of ID, name, or name wildcard searches to add.
+            remove: List of ID, name, or name wildcard searches to
+                remove.
+            dry_run: Bool whether to save or just print group XML.
+    """
+    jss_connection = JSSConnection.get()
+    group_search_method = jss_connection.MobileDeviceGroup
+    member_search_method = jss_connection.MobileDevice
+    _group_search_or_modify(group_search_method, member_search_method, args)
+
+
+def _group_search_or_modify(group_search_method, member_search_method, args):
+    """Perform a group search or add/remove devices from group.
+
+    Args:
+        group_search_method: Func to search JSS for groups.
+            (i.e. jss.JSS.ComputerGroup or jss.JSS.MobileDeviceGroup)
+        member_search_method: Func to search JSS for devices.
+            (i.e. jss.JSS.Computer or jss.JSS.MobileDevice)
+        args: argparser args with properties:
+            search: Name or ID of computer group.
+            add: List of ID, name, or name wildcard searches to add.
+            remove: List of ID, name, or name wildcard searches to
+                remove.
+            dry_run: Bool whether to save or just print group XML.
+    """
     if not args.search and (args.add or args.remove):
         print "Please provide a group to add or remove from."
         sys.exit(1)
     elif args.search and (args.add or args.remove):
-        computers = jss_connection.Computer()
         try:
-            group = jss_connection.ComputerGroup(args.search)
+            group = group_search_method(args.search)
         except jss.exceptions.JSSGetError:
             print "Group not found."
             sys.exit(1)
 
         if args.add:
-            add_computers = [computer for computer_search in args.add for
-                             computer in tools.search_for_object(
-                                 jss_connection.Computer, computer_search)]
-
-            for computer in add_computers:
-                print "Adding %s to %s" % (computer.name, group.name)
-                group.add_computer(computer)
+            add_members = tools.build_group_members(
+                member_search_method, args.add)
+            tools.add_group_members(group, add_members)
 
         if args.remove:
-            remove_computers = [computer for computer_search in args.remove
-                                for computer in tools.search_for_object(
-                                    jss_connection.Computer, computer_search)]
-
-            for computer in remove_computers:
-                print "Removing %s from %s" % (computer.name, group.name)
-                try:
-                    group.remove_computer(computer)
-                except ValueError:
-                    print "%s is not a member; not removing." % computer.name
+            remove_members = tools.build_group_members(
+                member_search_method, args.remove)
+            tools.remove_group_members(group, remove_members)
 
         if args.dry_run:
             print group
@@ -463,7 +497,8 @@ def group_search_or_modify(args):
             group.save()
 
     else:
-        search_func = tools.create_search_func(jss_connection.ComputerGroup)
+        search_func = tools.create_search_func(
+            group_search_method)
         search_func(args)
 
 
