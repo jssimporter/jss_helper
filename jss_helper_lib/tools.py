@@ -31,11 +31,11 @@ import sys
 import jss
 
 
-__version__ = "2.0.1"
 REQUIRED_PYTHON_JSS_VERSION = StrictVersion("0.3.4")
 WILDCARDS = "*?[]"
 
 
+# General Functions ###########################################################
 def version_check():
     """Ensure we have the right version of python-jss."""
     try:
@@ -83,6 +83,89 @@ def build_results_string(heading, results):
     return output_string + "\n"
 
 
+def search_for_object(obj_method, search):
+    """Return objects matching a search pattern.
+
+    Manages making the appropriate searches based on the type of
+    search query.
+
+    Args:
+        obj_method: Func to call to perform the search. Assumes that
+            the second argument, search, will be passable as the sole
+            argument to that func. The intention is to pass a search
+            method from the jss.JSS object, e.g.
+            "jss_connection.Package"
+        search: A name, ID, or wildcard search (see func
+            wildcard_search). Used as the argument to "obj_method".
+
+    Returns:
+        A list of JSSObjects, or a JSSObjectList
+    """
+    search_is_wildcard = False
+    if search:
+        for wildcard in WILDCARDS:
+            if wildcard in search:
+                search_is_wildcard = True
+
+    results = []
+    if search_is_wildcard:
+        wildcard_results = wildcard_search(obj_method(), search)
+        for obj in wildcard_results:
+            try:
+                results.append(obj_method(obj["name"]))
+            except jss.JSSGetError:
+                continue
+    else:
+        if search:
+            try:
+                results = [obj_method(search)]
+            except jss.JSSGetError:
+                pass
+        else:
+            try:
+                results = obj_method()
+            except jss.JSSGetError:
+                pass
+
+    return results
+
+
+def wildcard_search(objects, pattern, case_sensitive=True):
+    """Search for names that match a Unix-shell style pattern.
+
+    Args:
+        objects: Iterable of JSSObjects with a .name property.
+        pattern: String pattern to search for, with the following
+            characters used as wildcards:
+                "*": Matches everything.
+                "?": Matches any single character.
+                "[seq]": Matches any character in seq.
+                "[!seq]": Matches any character not in seq.
+                To escqpe a wildcard character, wrap it in brackets;
+                e.g.: "[?]" matches a "?".
+        case_sensitive: Boolean value whether to make comparison with
+            case sensitivity. Defaults to "True".
+
+    Returns:
+        List of all JSSObjects which match the wildcard.
+    """
+    # The fnmatch module uses OS-specific case sensitivity settings.
+    # We are not matching filenames, so we don't care what the
+    # filesystem wants.
+
+    # It would probably be easier to just copy the fnmatch source here
+    # and edit fnmatch.fnmatch to do what we need!
+    if not case_sensitive:
+        test_names = [(obj, obj.name.upper()) for obj in objects]
+    else:
+        test_names = [(obj, obj.name) for obj in objects]
+
+    results = [obj for obj, name in test_names if
+               fnmatch.fnmatchcase(name, pattern)]
+
+    return results
+
+
 def find_objects_in_containers(search_objects, search_path, containers):
     """Get all container objects which contain references to objects.
 
@@ -116,6 +199,265 @@ def find_objects_in_containers(search_objects, search_path, containers):
                     element.findtext("name") in search_names):
                 results.append(obj)
     return results
+
+
+def find_groups_in_scope(groups, scopables):
+    """Find groups which are scoped in scopables.
+
+    Args:
+        groups: A list of jss ComputerGroup or MobileDeviceGroup objects.
+        scopables: A list of JSSObjects or a jss.JSSObjectList of some
+            types which have a "scope" subelement (Policy,
+            OSXConfigurationProfile, MobileDeviceConfigurationProfile).
+
+    Returns: A list of JSSObjects which match.
+    """
+    if isinstance(scopables, jss.JSSObjectList):
+        scopables = scopables.retrieve_all()
+    if scopables and (type(scopables[0]) in
+                      [jss.Policy, jss.OSXConfigurationProfile]):
+        search = "scope/computer_groups/computer_group"
+    elif scopables and isinstance(scopables[0],
+                                  jss.MobileDeviceConfigurationProfile):
+        search = "scope/mobile_device_groups/mobile_device_group"
+
+    return find_objects_in_containers(groups, search, scopables)
+
+
+def get_scoped_to_all(containers):
+    """Find objects scoped to all computers/mobile devices.
+
+    Args:
+        containers: A list of jss.Policy,
+            jss.OSXConfigurationProfile, or
+            jss.MobileDeviceConfigurationProfile objects.
+    Returns:
+        A list of JSSObjects.
+    """
+    results = []
+    for container in containers:
+        # pylint: disable=unidiomatic-typecheck
+        # TODO: This can be slightly compacted.
+        if type(container) in [jss.Policy, jss.OSXConfigurationProfile]:
+            if container.findtext("scope/all_computers") == "true":
+                results.append(container)
+        elif type(container) in [jss.MobileDeviceConfigurationProfile]:
+            if container.findtext("scope/all_mobile_devices") == "true":
+                results.append(container)
+        # pylint: enable=unidiomatic-typecheck
+    return results
+
+
+def create_search_func(obj_method):
+    """Generates a function to perform basic list and xml queries.
+
+    Args:
+        obj_method: A function that searches for a JSSObject.
+            Probably one of the jss.JSS helper methods.
+            (e.g. jss.JSS.Package)
+
+    Returns:
+        A function that takes one argument of Argparser args, with a
+        'search' property to be passed to the obj_method if needed.
+    """
+    def search_func(args):
+        """Searches JSS for all objects OR a specific object.
+
+        Prints results as a list or an individual object differently
+        for purposes of output.
+
+        Args:
+            args: argparser args with properties:
+                search: Name or ID of object to search for.
+        """
+        results = search_for_object(obj_method, args.search)
+
+        if not results:
+            print "Object: %s does not exist!" % args.search
+        elif len(results) > 1:
+            print build_results_string(None, results)
+        else:
+            for result in results:
+                print result
+
+    return search_func
+
+
+# Group manipulation functions ###############################################
+def build_group_members(obj_search_method, searches):
+    """Given a list of searches, build a list of all results.
+
+    Args:
+        obj_search_method: jss.JSS search method for the desired device
+            type (e.g. jss.JSS.Computer or jss.JSS.MobileDevice).
+        searches: List of searches to perform (with search_for_object).
+
+    Returns:
+        List of JSSObjects that match the searches.
+    """
+    devices = [device for obj_search in searches for device in
+               search_for_object(obj_search_method, obj_search)]
+    return devices
+
+
+def add_group_members(group, members):
+    """Add list of members to computer or md group."""
+    if isinstance(group, jss.ComputerGroup):
+        add_method = group.add_computer
+    elif isinstance(group, jss.MobileDeviceGroup):
+        add_method = group.add_mobile_device
+    for member in members:
+        print "Adding %s to %s" % (member.name, group.name)
+        add_method(member)
+
+
+def remove_group_members(group, members):
+    """Remove list of members to computer or md group."""
+    if isinstance(group, jss.ComputerGroup):
+        remove_method = group.remove_computer
+    elif isinstance(group, jss.MobileDeviceGroup):
+        remove_method = group.remove_mobile_device
+    for member in members:
+        print "Removing %s from %s" % (member.name, group.name)
+        try:
+            remove_method(member)
+        except ValueError:
+            print "%s is not a member; not removing." % member.name
+
+
+# Promotion functions #########################################################
+def get_updatable_policies(policies, packages):
+    """Get a list of policies where newer pkg versions are available.
+
+    Packages must have names which can be successfully split into
+    product name and version with get_package_info().
+
+    Args:
+        policies: A list of Policy objects.
+
+    Returns:
+        A list of strings; the names of policies which install a
+        package that is older than another package available on the
+        JSS.
+    """
+    multiples = _build_package_version_dict(packages)
+
+    # For each policy, lookup any packages it installs in the multiples
+    # dictionary and see if there is a newer version available.
+    updates_available = []
+    search = "package_configuration/packages/package/name"
+    for policy in policies:
+        packages_installed = [package.text for package in
+                              policy.findall(search)]
+        for package in packages_installed:
+            pkg_name, pkg_version = get_package_info(package)
+            if pkg_name in multiples:
+                if LooseVersion(pkg_version) < max(multiples[pkg_name]):
+                    updates_available.append(policy)
+                    break
+
+    # Make a new list of just names (rather than the full XML)
+    updates_available_names = [policy.findtext("general/name") for policy in
+                               updates_available]
+
+    return updates_available_names
+
+
+def log_warning(url, policy):
+    """Print warning about flushing the logs if triggers in policy."""
+    if policy.findtext("general/frequency") != "Ongoing":
+        triggers = ["trigger_checkin", "trigger_enrollment_complete",
+                    "trigger_login", "trigger_logout",
+                    "trigger_network_state_changed", "trigger_startup",
+                    "trigger_other"]
+        for trigger in triggers:
+            value = policy.findtext("general/" + trigger)
+            # Value can be string "false" or "" for "trigger_other".
+            if value not in [None, "False"]:
+                print "Remember to flush the policy logs!"
+                open_policy_log_in_browser(url, policy)
+                break
+
+
+def open_policy_log_in_browser(jss_url, policy):
+    """Open a policy's log page in the default browser."""
+    url = jss_url + "/policies.html?id=%s&o=l" % policy.id
+    if jss.tools.is_linux():
+        subprocess.check_call(["xdg-open", url])
+    elif jss.tools.is_osx():
+        subprocess.check_call(["open", url])
+
+
+def get_newest_pkg(options):
+    """Get the newest package from a list of a packages.
+
+    Args:
+        options: List of package names.
+
+    Returns: Either the newest package name or None. Package names
+        must be in some format that get_package_info() can extract a
+        version number.
+    """
+    versions = {get_package_info(package)[1]: package for package
+                in options if get_package_info(package)[1]}
+    if versions:
+        newest = max([LooseVersion(version) for version in versions])
+        result = versions[str(newest)]
+    else:
+        result = None
+
+    return result
+
+
+def _build_package_version_dict(package_list):
+    """Build a dictionary of package products with multiple versions.
+
+    Returns:
+        A dictionary of packages with multiple versions on the server:
+            key: Package basename (string)
+            value: List of package versions of type
+                distutil.version.LooseVersion
+    """
+    packages = [package.name for package in package_list]
+    package_version_dict = {}
+    for package in packages:
+        package_name, package_version = get_package_info(package)
+        # Convert string version to something we can cmp.
+        if package_name:
+            if package_name not in package_version_dict:
+                package_version_dict[package_name] = [
+                    LooseVersion(package_version)]
+            else:
+                package_version_dict[package_name].append(
+                    LooseVersion(package_version))
+
+    # Narrow down packages list to only products which have multiple
+    # packages on the JSS.
+    multiples = {package: package_version_dict[package] for package in
+                 package_version_dict if
+                 len(package_version_dict[package]) > 1}
+    return multiples
+
+
+def get_package_info(package_name):
+    """Return the package basename and version as a tuple."""
+    # Product name should be a combination of letters, numbers,
+    # hyphens, or underscores.
+    # A " ", "-", or "_" should separate the name from the version.
+    # whitespace, hyphens, or underscores
+    # The version then is any number of digits, followed by any number
+    # of letters, numbers, separated by "-", "_", "."s.
+    # Finally, an extension of ".pkg", ".pkg.zip", or ".dmg" must
+    # follow.
+    package_regex = (r"^(?P<basename>[\w\s\-]+)[\s\-_]"
+                     r"(?P<version>[\d]+[\w.\-]*)"
+                     r"(?P<extension>\.(pkg(\.zip)?|dmg))$")
+    match = re.search(package_regex, package_name)
+    if match:
+        result = match.group("basename", "version")
+    else:
+        result = (None, None)
+    return result
 
 
 def _input_menu_text(expandable, flags):
@@ -249,109 +591,6 @@ def display_options_list(options):
     print "\n" + choices
 
 
-def create_search_func(obj_method):
-    """Generates a function to perform basic list and xml queries.
-
-    Args:
-        obj_method: A function that searches for a JSSObject.
-            Probably one of the jss.JSS helper methods.
-            (e.g. jss.JSS.Package)
-
-    Returns:
-        A function that takes one argument of Argparser args, with a
-        'search' property to be passed to the obj_method if needed.
-    """
-    def search_func(args):
-        """Searches JSS for all objects OR a specific object.
-
-        Prints results as a list or an individual object differently
-        for purposes of output.
-
-        Args:
-            args: argparser args with properties:
-                search: Name or ID of object to search for.
-        """
-        results = search_for_object(obj_method, args.search)
-
-        if not results:
-            print "Object: %s does not exist!" % args.search
-        elif len(results) > 1:
-            print build_results_string(None, results)
-        else:
-            for result in results:
-                print result
-
-    return search_func
-
-
-def search_for_object(obj_method, search):
-    """Return objects matching a search pattern.
-
-    Manages making the appropriate searches based on the type of
-    search query.
-
-    Args:
-        obj_method: Func to call to perform the search. Assumes that
-            the second argument, search, will be passable as the sole
-            argument to that func. The intention is to pass a search
-            method from the jss.JSS object, e.g.
-            "jss_connection.Package"
-        search: A name, ID, or wildcard search (see func
-            wildcard_search). Used as the argument to "obj_method".
-
-    Returns:
-        A list of JSSObjects, or a JSSObjectList
-    """
-    search_is_wildcard = False
-    if search:
-        for wildcard in WILDCARDS:
-            if wildcard in search:
-                search_is_wildcard = True
-
-    results = []
-    if search_is_wildcard:
-        wildcard_results = wildcard_search(obj_method(), search)
-        for obj in wildcard_results:
-            try:
-                results.append(obj_method(obj["name"]))
-            except jss.JSSGetError:
-                continue
-    else:
-        if search:
-            try:
-                results = [obj_method(search)]
-            except jss.JSSGetError:
-                pass
-        else:
-            try:
-                results = obj_method()
-            except jss.JSSGetError:
-                pass
-
-    return results
-
-
-def get_package_info(package_name):
-    """Return the package basename and version as a tuple."""
-    # Product name should be a combination of letters, numbers,
-    # hyphens, or underscores.
-    # A " ", "-", or "_" should separate the name from the version.
-    # whitespace, hyphens, or underscores
-    # The version then is any number of digits, followed by any number
-    # of letters, numbers, separated by "-", "_", "."s.
-    # Finally, an extension of ".pkg", ".pkg.zip", or ".dmg" must
-    # follow.
-    package_regex = (r"^(?P<basename>[\w\s\-]+)[\s\-_]"
-                     r"(?P<version>[\d]+[\w.\-]*)"
-                     r"(?P<extension>\.(pkg(\.zip)?|dmg))$")
-    match = re.search(package_regex, package_name)
-    if match:
-        result = match.group("basename", "version")
-    else:
-        result = (None, None)
-    return result
-
-
 def update_name(policy, cur_pkg_name, new_pkg_name):
     """Try to update policy name with package info.
 
@@ -385,119 +624,6 @@ def update_name(policy, cur_pkg_name, new_pkg_name):
         policy_name_element.text = new_name
     else:
         raise ValueError("Unable to update policy name!")
-
-
-def get_newest_pkg(options):
-    """Get the newest package from a list of a packages.
-
-    Args:
-        options: List of package names.
-
-    Returns: Either the newest package name or None. Package names
-        must be in some format that get_package_info() can extract a
-        version number.
-    """
-    versions = {get_package_info(package)[1]: package for package
-                in options if get_package_info(package)[1]}
-    if versions:
-        newest = max([LooseVersion(version) for version in versions])
-        result = versions[str(newest)]
-    else:
-        result = None
-
-    return result
-
-
-def log_warning(url, policy):
-    """Print warning about flushing the logs if triggers in policy."""
-    if policy.findtext("general/frequency") != "Ongoing":
-        triggers = ["trigger_checkin", "trigger_enrollment_complete",
-                    "trigger_login", "trigger_logout",
-                    "trigger_network_state_changed", "trigger_startup",
-                    "trigger_other"]
-        for trigger in triggers:
-            value = policy.findtext("general/" + trigger)
-            # Value can be string "false" or "" for "trigger_other".
-            if value not in [None, "False"]:
-                print "Remember to flush the policy logs!"
-                open_policy_log_in_browser(url, policy)
-                break
-
-
-def open_policy_log_in_browser(jss_url, policy):
-    """Open a policy's log page in the default browser."""
-    url = jss_url + "/policies.html?id=%s&o=l" % policy.id
-    if jss.tools.is_linux():
-        subprocess.check_call(["xdg-open", url])
-    elif jss.tools.is_osx():
-        subprocess.check_call(["open", url])
-
-
-def _build_package_version_dict(package_list):
-    """Build a dictionary of package products with multiple versions.
-
-    Returns:
-        A dictionary of packages with multiple versions on the server:
-            key: Package basename (string)
-            value: List of package versions of type
-                distutil.version.LooseVersion
-    """
-    packages = [package.name for package in package_list]
-    package_version_dict = {}
-    for package in packages:
-        package_name, package_version = get_package_info(package)
-        # Convert string version to something we can cmp.
-        if package_name:
-            if package_name not in package_version_dict:
-                package_version_dict[package_name] = [
-                    LooseVersion(package_version)]
-            else:
-                package_version_dict[package_name].append(
-                    LooseVersion(package_version))
-
-    # Narrow down packages list to only products which have multiple
-    # packages on the JSS.
-    multiples = {package: package_version_dict[package] for package in
-                 package_version_dict if
-                 len(package_version_dict[package]) > 1}
-    return multiples
-
-
-def get_updatable_policies(policies, packages):
-    """Get a list of policies where newer pkg versions are available.
-
-    Packages must have names which can be successfully split into
-    product name and version with get_package_info().
-
-    Args:
-        policies: A list of Policy objects.
-
-    Returns:
-        A list of strings; the names of policies which install a
-        package that is older than another package available on the
-        JSS.
-    """
-    multiples = _build_package_version_dict(packages)
-
-    # For each policy, lookup any packages it installs in the multiples
-    # dictionary and see if there is a newer version available.
-    updates_available = []
-    search = "package_configuration/packages/package/name"
-    for policy in policies:
-        packages_installed = [package.text for package in
-                              policy.findall(search)]
-        for package in packages_installed:
-            pkg_name, pkg_version = get_package_info(package)
-            if pkg_name in multiples:
-                if LooseVersion(pkg_version) < max(multiples[pkg_name]):
-                    updates_available.append(policy)
-                    break
-
-    # Make a new list of just names (rather than the full XML)
-    updates_available_names = [policy.findtext("general/name") for policy in
-                               updates_available]
-
-    return updates_available_names
 
 
 def _add_flags_to_list(flags, options):
@@ -534,125 +660,3 @@ def _add_flags_to_list(flags, options):
     return flagged_options
 
 
-def get_scoped_to_all(containers):
-    """Find objects scoped to all computers/mobile devices.
-
-    Args:
-        containers: A list of jss.Policy,
-            jss.OSXConfigurationProfile, or
-            jss.MobileDeviceConfigurationProfile objects.
-    Returns:
-        A list of JSSObjects.
-    """
-    results = []
-    for container in containers:
-        # pylint: disable=unidiomatic-typecheck
-        # TODO: This can be slightly compacted.
-        if type(container) in [jss.Policy, jss.OSXConfigurationProfile]:
-            if container.findtext("scope/all_computers") == "true":
-                results.append(container)
-        elif type(container) in [jss.MobileDeviceConfigurationProfile]:
-            if container.findtext("scope/all_mobile_devices") == "true":
-                results.append(container)
-        # pylint: enable=unidiomatic-typecheck
-    return results
-
-
-def wildcard_search(objects, pattern, case_sensitive=True):
-    """Search for names that match a Unix-shell style pattern.
-
-    Args:
-        objects: Iterable of JSSObjects with a .name property.
-        pattern: String pattern to search for, with the following
-            characters used as wildcards:
-                "*": Matches everything.
-                "?": Matches any single character.
-                "[seq]": Matches any character in seq.
-                "[!seq]": Matches any character not in seq.
-                To escqpe a wildcard character, wrap it in brackets;
-                e.g.: "[?]" matches a "?".
-        case_sensitive: Boolean value whether to make comparison with
-            case sensitivity. Defaults to "True".
-
-    Returns:
-        List of all JSSObjects which match the wildcard.
-    """
-    # The fnmatch module uses OS-specific case sensitivity settings.
-    # We are not matching filenames, so we don't care what the
-    # filesystem wants.
-
-    # It would probably be easier to just copy the fnmatch source here
-    # and edit fnmatch.fnmatch to do what we need!
-    if not case_sensitive:
-        test_names = [(obj, obj.name.upper()) for obj in objects]
-    else:
-        test_names = [(obj, obj.name) for obj in objects]
-
-    results = [obj for obj, name in test_names if
-               fnmatch.fnmatchcase(name, pattern)]
-
-    return results
-
-
-def find_groups_in_scope(groups, scopables):
-    """Find groups which are scoped in scopables.
-
-    Args:
-        groups: A list of jss ComputerGroup or MobileDeviceGroup objects.
-        scopables: A list of JSSObjects or a jss.JSSObjectList of some
-            types which have a "scope" subelement (Policy,
-            OSXConfigurationProfile, MobileDeviceConfigurationProfile).
-
-    Returns: A list of JSSObjects which match.
-    """
-    if isinstance(scopables, jss.JSSObjectList):
-        scopables = scopables.retrieve_all()
-    if scopables and (type(scopables[0]) in
-                      [jss.Policy, jss.OSXConfigurationProfile]):
-        search = "scope/computer_groups/computer_group"
-    elif scopables and isinstance(scopables[0],
-                                  jss.MobileDeviceConfigurationProfile):
-        search = "scope/mobile_device_groups/mobile_device_group"
-
-    return find_objects_in_containers(groups, search, scopables)
-
-
-def build_group_members(obj_search_method, searches):
-    """Given a list of searches, build a list of all results.
-
-    Args:
-        obj_search_method: jss.JSS search method for the desired device
-            type (e.g. jss.JSS.Computer or jss.JSS.MobileDevice).
-        searches: List of searches to perform (with search_for_object).
-
-    Returns:
-        List of JSSObjects that match the searches.
-    """
-    devices = [device for obj_search in searches for device in
-               search_for_object(obj_search_method, obj_search)]
-    return devices
-
-
-def add_group_members(group, members):
-    """Add list of members to computer or md group."""
-    if isinstance(group, jss.ComputerGroup):
-        add_method = group.add_computer
-    elif isinstance(group, jss.MobileDeviceGroup):
-        add_method = group.add_mobile_device
-    for member in members:
-        print "Adding %s to %s" % (member.name, group.name)
-        add_method(member)
-
-
-def remove_group_members(group, members):
-    """Remove list of members to computer or md group."""
-    if isinstance(group, jss.ComputerGroup):
-        remove_method = group.remove_computer
-    elif isinstance(group, jss.MobileDeviceGroup):
-        remove_method = group.remove_mobile_device
-    for member in members:
-        print "Removing %s from %s" % (member.name, group.name)
-        try:
-            remove_method(member)
-        except ValueError:
-            print "%s is not a member; not removing." % member.name

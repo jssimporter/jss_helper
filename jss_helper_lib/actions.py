@@ -30,9 +30,6 @@ from jss_helper_lib.jss_connection import JSSConnection
 from . import tools
 
 
-__version__ = "2.0.1"
-
-
 def build_argument_parser():
     """Build the argument parser for jss_helper.
 
