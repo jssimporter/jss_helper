@@ -244,7 +244,7 @@ def get_scoped(args):
     group = jss_connection.ComputerGroup(args.group)
 
     # Search for policies.
-    policies = jss_connection.Policy()
+    policies = jss_connection.Policy().retrieve_all()
     policy_results = tools.find_groups_in_scope([group], policies)
     policy_heading = "Policies scoped to %s" % group.name
     output = tools.build_results_string(policy_heading, policy_results) + "\n"
@@ -254,10 +254,11 @@ def get_scoped(args):
     output += tools.build_results_string(policy_heading, policy_results) + "\n"
 
     # Search for configuration profiles.
-    configps = jss_connection.OSXConfigurationProfile()
+    configps = jss_connection.OSXConfigurationProfile().retrieve_all()
     configp_results = tools.find_groups_in_scope([group], configps)
     configp_heading = "Configuration profiles scoped to %s" % group.name
-    output += tools.build_results_string(configp_heading, configp_results) + "\n"
+    output += (tools.build_results_string(configp_heading, configp_results) +
+               "\n")
     configp_results = tools.get_scoped_to_all(configps)
     configp_heading = "Configuration profiles scoped to all computers"
     output += tools.build_results_string(configp_heading, configp_results)
@@ -275,7 +276,7 @@ def get_md_scoped(args):
     jss_connection = JSSConnection.get()
     group = jss_connection.MobileDeviceGroup(args.group)
 
-    configps = jss_connection.MobileDeviceConfigurationProfile()
+    configps = jss_connection.MobileDeviceConfigurationProfile().retrieve_all()
     results = tools.find_groups_in_scope([group], configps)
     output = tools.build_results_string("Profiles scoped to %s" % group.name,
                                         results) + "\n"
@@ -296,18 +297,16 @@ def get_group_scope_diff(args):
     """
     # TODO: This can just run scoped twice and then do the file diff.
     jss_connection = JSSConnection.get()
-    policies = jss_connection.Policy()
-    policies.sort()
+    policies = jss_connection.Policy().retrieve_all()
     group1 = jss_connection.ComputerGroup(args.group1)
     group2 = jss_connection.ComputerGroup(args.group2)
-    results1 = tools.find_groups_in_scope([group1], policies)
-    results2 = tools.find_groups_in_scope([group2], policies)
+    results1 = tools.find_groups_in_scope(group1, policies)
+    results2 = tools.find_groups_in_scope(group2, policies)
     scoped_to_all = tools.get_scoped_to_all(policies)
 
-    configps = jss_connection.OSXConfigurationProfile()
-    configps.sort()
-    configp_results1 = tools.find_groups_in_scope([group1], configps)
-    configp_results2 = tools.find_groups_in_scope([group2], configps)
+    configps = jss_connection.OSXConfigurationProfile().retrieve_all()
+    configp_results1 = tools.find_groups_in_scope(group1, configps)
+    configp_results2 = tools.find_groups_in_scope(group2, configps)
     configp_scoped_to_all = tools.get_scoped_to_all(configps)
 
     # I tried to do this with the tempfile module, but the files always
@@ -363,11 +362,11 @@ def get_md_scope_diff(args):
             group2: Name or ID of second group.
     """
     jss_connection = JSSConnection.get()
-    profiles = jss_connection.MobileDeviceConfigurationProfile()
+    profiles = jss_connection.MobileDeviceConfigurationProfile().retrieve_all()
     group1 = jss_connection.MobileDeviceGroup(args.group1)
     group2 = jss_connection.MobileDeviceGroup(args.group2)
-    results1 = tools.find_groups_in_scope([group1], profiles)
-    results2 = tools.find_groups_in_scope([group2], profiles)
+    results1 = tools.find_groups_in_scope(group1, profiles)
+    results2 = tools.find_groups_in_scope(group2, profiles)
     scoped_to_all = tools.get_scoped_to_all(profiles)
 
     # I tried to do this with the tempfile module, but the files always

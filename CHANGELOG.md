@@ -19,12 +19,13 @@ All notable changes to this project will be documented in this file. This projec
 		- All object search functions (`computer`, `policy`, etc)
 		- `installs`
 		- `group` `--add/--remove` optional arguments.
+		- `md_group` `--add/--remove` optional arguments.
 		- `batch_scope` (`group` and `policy` arguments).
-- Added `--add`, `--remove`, and `--dry-run` options to `group`. You can now add and remove any number of computers, specified by name, wildcard-name-search, or ID. If you specify `--dry-run` it doesn't save; it just prints the group XML.
+- Added `--add`, `--remove`, and `--dry-run` options to `group` and `md_group`. You can now add and remove any number of computers, specified by name, wildcard-name-search, or ID. If you specify `--dry-run` it doesn't save; it just prints the group XML.
 
 ### Changed
 
-- More gracefully handles a CTRL-C exit from the menus.
+- More gracefully handles a CTRL-C exit from the menus and commands.
 - `promote` now opens your default browser to the log page for policy if needed.
 - Output headers now make more sense.
 - Commands which search for scoped objects now include results scoped to "all computers" or "all mobile devices" in their results, labeled as such.
