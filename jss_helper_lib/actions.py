@@ -435,59 +435,20 @@ def group_search_or_modify(args):
         except jss.exceptions.JSSGetError:
             print "Group not found."
             sys.exit(1)
+
         if args.add:
-            add_computers = []
-            for computer_search in args.add:
-                search_is_wildcard = False
-                for wildcard in tools.WILDCARDS:
-                    if wildcard in computer_search:
-                        search_is_wildcard = True
-                        break
-
-                full_computers = []
-                if search_is_wildcard:
-                    search_results = [computer["name"] for computer in
-                                      tools.wildcard_search(computers,
-                                                            computer_search)]
-                    full_computers.extend(search_results)
-                else:
-                    full_computers.append(computer_search)
-
-                for computer in full_computers:
-                    try:
-                        add_computers.append(
-                            jss_connection.Computer(computer))
-                    except jss.exceptions.JSSGetError:
-                        continue
+            add_computers = [computer for computer_search in args.add for
+                             computer in tools.search_for_object(
+                                 jss_connection.Computer, computer_search)]
 
             for computer in add_computers:
                 print "Adding %s to %s" % (computer.name, group.name)
                 group.add_computer(computer)
 
         if args.remove:
-            remove_computers = []
-            for computer_search in args.remove:
-                search_is_wildcard = False
-                for wildcard in tools.WILDCARDS:
-                    if wildcard in computer_search:
-                        search_is_wildcard = True
-                        break
-
-                full_computers = []
-                if search_is_wildcard:
-                    search_results = [computer["name"] for computer in
-                                      tools.wildcard_search(computers,
-                                                            computer_search)]
-                    full_computers.extend(search_results)
-                else:
-                    full_computers.append(computer_search)
-
-                for computer in full_computers:
-                    try:
-                        remove_computers.append(
-                            jss_connection.Computer(computer))
-                    except jss.exceptions.JSSGetError:
-                        continue
+            remove_computers = [computer for computer_search in args.remove
+                                for computer in tools.search_for_object(
+                                    jss_connection.Computer, computer_search)]
 
             for computer in remove_computers:
                 print "Removing %s from %s" % (computer.name, group.name)

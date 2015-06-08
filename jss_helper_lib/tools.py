@@ -273,11 +273,8 @@ def create_search_func(obj_method):
         """
         results = search_for_object(obj_method, args.search)
 
-        if results is None:
+        if not results:
             print "Object: %s does not exist!" % args.search
-        # TODO: Should this be isinstance(results, JSSObjectList) and
-        # drop the wrapping of obj_method(search) in a list in
-        # search_for_objects?
         elif len(results) > 1:
             print build_results_string(None, results)
         else:
@@ -303,7 +300,7 @@ def search_for_object(obj_method, search):
             wildcard_search). Used as the argument to "obj_method".
 
     Returns:
-        A list of JSSObjects, a JSSObjectList, or None.
+        A list of JSSObjects, or a JSSObjectList
     """
     search_is_wildcard = False
     if search:
@@ -311,28 +308,25 @@ def search_for_object(obj_method, search):
             if wildcard in search:
                 search_is_wildcard = True
 
+    results = []
     if search_is_wildcard:
         wildcard_results = wildcard_search(obj_method(), search)
-        results = []
         for obj in wildcard_results:
             try:
                 results.append(obj_method(obj["name"]))
             except jss.JSSGetError:
                 continue
-
-        if not results:
-            results = None
     else:
         if search:
             try:
                 results = [obj_method(search)]
             except jss.JSSGetError:
-                results = None
+                pass
         else:
             try:
                 results = obj_method()
             except jss.JSSGetError:
-                results = None
+                pass
 
     return results
 
