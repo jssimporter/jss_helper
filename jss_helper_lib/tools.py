@@ -469,7 +469,7 @@ def _build_package_version_dict(package_list):
     return multiples
 
 
-def _get_updatable_policies(policies, packages):
+def get_updatable_policies(policies, packages):
     """Get a list of policies where newer pkg versions are available.
 
     Packages must have names which can be successfully split into

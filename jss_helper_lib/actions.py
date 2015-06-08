@@ -622,8 +622,7 @@ def promote(args):
 
         # Get lists of policies with available updates, and all
         # policies which install packages.
-        with_updates = tools._get_updatable_policies(all_policies,
-                                                     all_packages)
+        with_updates = tools.get_updatable_policies(all_policies, all_packages)
         install_policies = [
             policy.name for policy in all_policies if
             int(policy.findtext("package_configuration/packages/size")) > 0]

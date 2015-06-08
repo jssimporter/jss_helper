@@ -22,7 +22,7 @@ JSS actions and helper functions for jss_helper.
 
 
 from . import actions
-from jss_connection import JSSConnection
+from .jss_connection import JSSConnection
 from . import tools
 
 

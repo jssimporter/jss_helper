@@ -92,7 +92,6 @@ def main():
     # namespaces.
     JSSConnection.setup(args)
     actions.JSSConnection.setup(args)
-    jss_connection = JSSConnection.get()
 
     try:
         args.func(args)
