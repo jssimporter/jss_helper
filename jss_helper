@@ -76,8 +76,8 @@ Actions:
 
 import sys
 
-from jss_helper_lib.jss_helper import (version_check, JSSConnection,
-                                       build_argument_parser)
+from jss_helper_lib.tools import (version_check, JSSConnection)
+from jss_helper_lib.actions import build_argument_parser
 
 
 def main():
@@ -89,7 +89,7 @@ def main():
     args = parser.parse_args()
     if args.v:
         jss_connection.verbose = True
-    # Until I add a toggle method...
+    # TODO: Add a toggle method...
     jss_connection.session.verify = args.ssl
 
     try:

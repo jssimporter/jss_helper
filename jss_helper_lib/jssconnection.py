@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2014, 2015 Shea G Craig <shea.craig@da.org>
+# Copyright (C) 2014-2015 Shea G Craig <shea.craig@da.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,12 +15,32 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-"""jss_helper_lib"""
+"""jssconnection.py
+
+Class for managing a JSS connection.
+"""
 
 
-import jss_helper_lib.actions
-import jss_helper_lib.jssconnection
-import jss_helper_lib.tools
+import jss
 
 
-__version__ = "2.0.1"
+__all__ = ["JSSConnection"]
+
+
+class JSSConnection(object):
+    """Class for providing a single JSS connection."""
+    _jss_prefs = None
+    _jss = None
+
+    @classmethod
+    def setup(cls):
+        """Set up the jss connection class variable."""
+        cls._jss_prefs = jss.JSSPrefs()
+        cls._jss = jss.JSS(jss_prefs=cls._jss_prefs)
+
+    @classmethod
+    def get(cls):
+        """Return the shared JSS object."""
+        if not cls._jss:
+            cls.setup()
+        return cls._jss
