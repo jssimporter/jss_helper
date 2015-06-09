@@ -24,6 +24,7 @@ Support functions for jss_helper.
 from distutils.version import StrictVersion, LooseVersion
 import fnmatch
 from operator import itemgetter
+import os.path
 import re
 import subprocess
 import sys
@@ -282,6 +283,34 @@ def create_search_func(obj_method):
 
     return search_func
 
+
+def write_text_to_file(ofilename, text):
+    """Write text to a file in /tmp.
+
+    Adds a concluding newline character.
+
+    Args:
+        ofilename: Name of tmp file to create.
+        text: Text to write.
+    """
+    with open(ofilename, mode="w") as ofile:
+        ofile.write(text + "\n")
+
+
+def diff(text1, text2):
+    output_tuple = zip(("/tmp/jss_helper_diff_%s.txt" % num for num in
+                        xrange(2)), (text1, text2))
+    for filename, text in output_tuple:
+        write_text_to_file(filename, text)
+    # Diff will return 1 if files differ, so we have to catch that
+    # error.
+    try:
+        result = subprocess.check_output(
+            ["sdiff", "-d", output_tuple[0][0], output_tuple[1][0]])
+    except subprocess.CalledProcessError as err:
+        result = err.output
+
+    return result
 
 # Group manipulation functions ###############################################
 def build_group_members(obj_search_method, searches):
@@ -581,7 +610,6 @@ def display_options_list(options):
     """
     # Justify the columns so the option numbers don't push the options
     # out of a nice left-justified column.
-    # TODO: Very similar to build_results_string.
 
     # Figure out the number of options, then the length of that number.
     length = len(str(len(options))) + len("\t")
