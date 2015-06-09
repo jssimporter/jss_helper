@@ -214,8 +214,8 @@ def find_groups_in_scope(groups, scopables):
     """
     if isinstance(scopables, jss.JSSObjectList):
         scopables = scopables.retrieve_all()
-    if scopables and (type(scopables[0]) in
-                      [jss.Policy, jss.OSXConfigurationProfile]):
+    if scopables and isinstance(scopables[0],
+                                (jss.Policy, jss.OSXConfigurationProfile)):
         search = "scope/computer_groups/computer_group"
     elif scopables and isinstance(scopables[0],
                                   jss.MobileDeviceConfigurationProfile):
@@ -228,23 +228,23 @@ def get_scoped_to_all(containers):
     """Find objects scoped to all computers/mobile devices.
 
     Args:
-        containers: A list of jss.Policy,
-            jss.OSXConfigurationProfile, or
-            jss.MobileDeviceConfigurationProfile objects.
+        containers: A jss.Policy, jss.OSXConfigurationProfile, or
+            jss.MobileDeviceConfigurationProfile object, or a list of
+            those objects.
     Returns:
         A list of JSSObjects.
     """
+    if not isinstance(containers, list):
+        containers = [containers]
+
     results = []
     for container in containers:
-        # pylint: disable=unidiomatic-typecheck
-        # TODO: This can be slightly compacted.
-        if type(container) in [jss.Policy, jss.OSXConfigurationProfile]:
+        if isinstance(container, (jss.Policy, jss.OSXConfigurationProfile)):
             if container.findtext("scope/all_computers") == "true":
                 results.append(container)
-        elif type(container) in [jss.MobileDeviceConfigurationProfile]:
+        elif isinstance(container, (jss.MobileDeviceConfigurationProfile)):
             if container.findtext("scope/all_mobile_devices") == "true":
                 results.append(container)
-        # pylint: enable=unidiomatic-typecheck
     return results
 
 
