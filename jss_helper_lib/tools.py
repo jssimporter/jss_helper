@@ -24,7 +24,6 @@ Support functions for jss_helper.
 from distutils.version import StrictVersion, LooseVersion
 import fnmatch
 from operator import itemgetter
-import os.path
 import re
 import subprocess
 import sys
@@ -285,12 +284,12 @@ def create_search_func(obj_method):
 
 
 def write_text_to_file(ofilename, text):
-    """Write text to a file in /tmp.
+    """Write text to a file.
 
     Adds a concluding newline character.
 
     Args:
-        ofilename: Name of tmp file to create.
+        ofilename: Name of file to create.
         text: Text to write.
     """
     with open(ofilename, mode="w") as ofile:
@@ -298,6 +297,18 @@ def write_text_to_file(ofilename, text):
 
 
 def diff(text1, text2):
+    """Perform an sdiff comparison of two strings.
+
+    Due to the limitations of diff, strings must first be written to
+    temporary files.
+
+    Args:
+        text1: First body of text.
+        text2: Second body of text.
+
+    Returns:
+        Output from sdiff.
+    """
     output_tuple = zip(("/tmp/jss_helper_diff_%s.txt" % num for num in
                         xrange(2)), (text1, text2))
     for filename, text in output_tuple:
@@ -311,6 +322,7 @@ def diff(text1, text2):
         result = err.output
 
     return result
+
 
 # Group manipulation functions ###############################################
 def build_group_members(obj_search_method, searches):

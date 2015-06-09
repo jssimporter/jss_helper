@@ -22,7 +22,6 @@ Functions called by jss_helper, implementing all top-level actions.
 
 
 import argparse
-import subprocess
 import sys
 
 import jss
@@ -539,6 +538,7 @@ def promote(args):
                 The policy name must include the exact package name,
                 and version number for this to do anything.
     """
+    # TODO: Refeactor.
     jss_connection = JSSConnection.get()
     if args.policy:
         policy = jss_connection.Policy(args.policy)
