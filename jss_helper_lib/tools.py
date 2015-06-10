@@ -31,7 +31,7 @@ import sys
 import jss
 
 
-REQUIRED_PYTHON_JSS_VERSION = StrictVersion("0.3.4")
+REQUIRED_PYTHON_JSS_VERSION = StrictVersion("1.0.2")
 WILDCARDS = "*?[]"
 
 

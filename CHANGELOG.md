@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file. This projec
 
 ## [Unreleased][unreleased]
 
+## [2.0.1] - 2015-06-10 - Narwhal Tears
+
 ### Added
 
 - Added action `configp` for OSX Configuration Profiles.
@@ -14,7 +16,7 @@ All notable changes to this project will be documented in this file. This projec
 - `installs` now includes imaging configurations (`ComputerConfiguration`) (#3) Thanks again to @homebysix for the idea.
 - Added action `excluded` for showing policies and profiles from which a group is excluded. (#5) (@homebysix again!)
 - Added action `md_excluded` for showing profiles from which a mobile device group is excluded.
-- Most actions that take a search argument will now accept Unix-shell style wildcard characters for matching. These search arguments *MUST* be single-quote escaped in Bash to avoid shell wildcard-expansion; e.g.: `jss_helper installs 'Firefox*'`.
+- Most actions that take a search argument will now accept Unix-shell style wildcard characters for matching. 
 	- Actions incorporating wildcard searches:
 		- All object search functions (`computer`, `policy`, etc)
 		- `installs`
@@ -34,6 +36,7 @@ All notable changes to this project will be documented in this file. This projec
 	- `scope_diff`
 	- `md_scope_diff`
 - Moved all code into a python package. This means both `jss_helper` and `jss_helper_lib` should be in the same folder (see README for new installation details) or use the installer package.
+- Now requires python-jss version 1.0.2 or newer due to a bugfix in that library.
 
 ### Known Issues
 
@@ -70,5 +73,7 @@ This release changes the names of verbs and simplifies the arguments for running
 
 - Initial Release
 
-[unreleased]: https://github.com/sheagcraig/jss_helper/compare/2.0.0...HEAD
+[unreleased]: https://github.com/sheagcraig/jss_helper/compare/2.0.1...HEAD
+[2.0.1]: https://github.com/sheagcraig/jss_helper/compare/v2.0.0...2.0.1
 [2.0.0]: https://github.com/sheagcraig/jss_helper/compare/v1.0...2.0.0
+

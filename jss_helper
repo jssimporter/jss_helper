@@ -81,6 +81,9 @@ from jss_helper_lib import JSSConnection
 from jss_helper_lib import tools
 
 
+__version__ = "2.0.1"
+
+
 def main():
     """Run as a cli command."""
     tools.version_check()
