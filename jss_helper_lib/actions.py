@@ -517,7 +517,6 @@ def get_package_policies(args):
     print output
 
 
-# pylint: disable=too-many-locals
 def promote(args):
     """Replace a package in a policy with another package.
 
@@ -538,70 +537,37 @@ def promote(args):
                 The policy name must include the exact package name,
                 and version number for this to do anything.
     """
-    # TODO: Refeactor.
     jss_connection = JSSConnection.get()
+    all_packages = jss_connection.Package()
+
+    # Handle policy arguments.
     if args.policy:
         policy = jss_connection.Policy(args.policy)
     else:
-        # Interactive policy menu
-        print ("No policy specified in args: Building a list of policies "
-               "which have newer packages available...")
-        # Get full policy XML for all policies.
-        policy_list = jss_connection.Policy()
-        print "Retrieving %i policies. Please wait..." % len(policy_list)
-        all_policies = policy_list.retrieve_all()
-        all_packages = jss_connection.Package()
-
-        # Get lists of policies with available updates, and all
-        # policies which install packages.
-        with_updates = tools.get_updatable_policies(all_policies, all_packages)
-        install_policies = [
-            policy.name for policy in all_policies if
-            int(policy.findtext("package_configuration/packages/size")) > 0]
-
-        policy_name = tools.prompt_user(with_updates,
-                                        expandable=install_policies)
+        policy_name = tools.policy_menu(jss_connection.Policy(),
+                                        all_packages)
         policy = jss_connection.Policy(policy_name)
 
     cur_pkg = policy.findtext("package_configuration/packages/package/name")
-    cur_pkg_basename, _ = tools.get_package_info(cur_pkg)
 
+    # Handle package arguments.
     if args.new_package:
         new_pkg_name = args.new_package
     else:
-        # Interactive package menu.
+        new_pkg_name = tools.get_pkg_menu(all_packages, cur_pkg)
 
-        # Build a list of ALL packages.
-        full_options = [package.name for package in jss_connection.Package()]
-        # Build a list of packages with same product name as policy.
-        matching_options = [option for option in full_options if
-                            cur_pkg_basename and cur_pkg_basename.upper() in
-                            option.upper()]
-
-        # Sort the package lists by name, then version.
-        sorted_full_options = tools.sort_package_list(full_options)
-        sorted_matching_options = tools.sort_package_list(matching_options)
-
-        # Build flags for menu.
-        flags = {"CURRENT": lambda f: cur_pkg in f}
-        default = tools.get_newest_pkg(matching_options)
-        if default:
-            flags["DEFAULT"] = lambda f: default in f
-
-        new_pkg_name = tools.prompt_user(
-            sorted_matching_options, expandable=sorted_full_options,
-            flags=flags)
-
+    # Make changes to policy.
     policy.remove_object_from_list(cur_pkg, "package_configuration/packages")
     policy.add_package(jss_connection.Package(new_pkg_name))
 
+    # Handle policy name updating.
     if args.update_name:
         try:
             tools.update_name(policy, cur_pkg, new_pkg_name)
         except ValueError:
             print "Unable to update policy name!"
 
+    # Save policy and remind user to flush logs if needed.
     policy.save()
     url = JSSConnection.get().base_url
     tools.log_warning(url, policy)
-# pylint: enable=too-many-locals

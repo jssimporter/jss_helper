@@ -700,3 +700,61 @@ def _add_flags_to_list(flags, options):
     return flagged_options
 
 
+def policy_menu(policy_list, package_list):
+    """Present user with an interactive policy menu.
+
+    Args:
+        jss_connection: A jss.JSS object.
+    Returns:
+        String name of selected policy.
+    """
+    print ("No policy specified in args: Building a list of policies which "
+           "have newer packages available...")
+    # Get full policy XML for all policies.
+    #jss_connection = JSSConnection.get()
+    print "Retrieving %i policies. Please wait..." % len(policy_list)
+    all_policies = policy_list.retrieve_all()
+
+    # Get lists of policies with available updates, and all
+    # policies which install packages.
+    with_updates = get_updatable_policies(all_policies, package_list)
+    install_policies = [
+        policy.name for policy in all_policies if
+        int(policy.findtext("package_configuration/packages/size")) > 0]
+
+    return prompt_user(with_updates, expandable=install_policies)
+
+
+def get_pkg_menu(packages, cur_pkg):
+    """Present user with an interactive package menu.
+
+    Will attempt to offer relevent packages first.
+
+    Args:
+        packages: A jss.JSSObjectList of packages; i.e. the result of
+            a JSS.Package() call.
+        cur_pkg: jss.Package object for the current package. Used to
+            determine relevent matches.
+
+    Returns:
+        String name of the package chosen by the user.
+    """
+    cur_pkg_basename, _ = get_package_info(cur_pkg)
+    # Build a list of ALL package names.
+    full_options = [package.name for package in packages]
+    # Build a list of package names with same product name as policy.
+    matching_options = [option for option in full_options if cur_pkg_basename
+                        and cur_pkg_basename.upper() in option.upper()]
+
+    # Sort the package lists by name, then version.
+    sorted_full_options = sort_package_list(full_options)
+    sorted_matching_options = sort_package_list(matching_options)
+
+    # Build flags for menu.
+    flags = {"CURRENT": lambda f: cur_pkg in f}
+    default = get_newest_pkg(matching_options)
+    if default:
+        flags["DEFAULT"] = lambda f: default in f
+
+    return prompt_user(sorted_matching_options, expandable=sorted_full_options,
+                       flags=flags)
