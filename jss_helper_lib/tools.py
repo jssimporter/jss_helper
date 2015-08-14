@@ -27,6 +27,7 @@ from operator import itemgetter
 import re
 import subprocess
 import sys
+from urllib import quote
 
 import jss
 
@@ -275,7 +276,7 @@ def create_search_func(obj_method):
         if not results:
             print "Object: %s does not exist!" % args.search
         elif len(results) > 1:
-            print build_results_string(None, results)
+            print build_results_string(None, results).encode("utf_8")
         else:
             for result in results:
                 print result
