@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file. This projec
 
 ## [Unreleased][unreleased]
 
+### Fixed
+
+- Basic search functions now print unicode characters without freaking out.
+- Should accept unicode arguments as well.
+
 ## [2.0.1] - 2015-06-10 - Narwhal Tears
 
 ### Added

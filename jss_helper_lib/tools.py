@@ -32,7 +32,7 @@ from urllib import quote
 import jss
 
 
-REQUIRED_PYTHON_JSS_VERSION = StrictVersion("1.0.2")
+REQUIRED_PYTHON_JSS_VERSION = StrictVersion("1.3.0")
 WILDCARDS = "*?[]"
 
 

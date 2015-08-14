@@ -81,7 +81,7 @@ from jss_helper_lib import JSSConnection
 from jss_helper_lib import tools
 
 
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 
 
 def main():
