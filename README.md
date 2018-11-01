@@ -1,6 +1,6 @@
 # jss_helper
 
-##Introduction:
+## Introduction
 jss_helper is a powerful commandline interface for managing and auditing your Casper JSS.
 
 At first glance, it's a quick and easy way to query for objects like Policies, Packages, Smart Groups, etc. You can view lists of *all* Packages, or you can look at the actual XML representing a single package.
@@ -13,7 +13,6 @@ Where things get interesting, however, are the advanced features. jss_helper let
 - See a list of all policies which do package installs.
 
 ## Installation
-
 Either grab the package from the releases section, or follow below for manual installation.
 
 Copy jss_helper and jss_helper_lib somewhere in your path. (Recommended:  `/usr/local/bin`)
