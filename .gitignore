@@ -1,1 +1,6 @@
 *.pyc
+*.swp
+.ropeproject
+*.pkg
+*.DS_Store
+local_tests/*

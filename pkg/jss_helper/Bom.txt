@@ -1,0 +1,5 @@
+.	40755	0/0
+./usr	41775	0/80
+./usr/local	40755	0/80
+./usr/local/bin	40755	0/80
+./usr/local/bin/jss_helper_lib	40755	0/80
