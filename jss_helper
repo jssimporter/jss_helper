@@ -27,7 +27,7 @@ Query the JSS.
 optional arguments:
   -h, --help      show this help message and exit
   -v              Verbose output.
-  --ssl           Use SSL verification
+  --nossl         Do not use SSL verification
 
 Actions:
 
@@ -81,7 +81,7 @@ from jss_helper_lib import JSSConnection
 from jss_helper_lib import tools
 
 
-__version__ = "2.0.2"
+__version__ = "2.1.0b1"
 
 
 def main():

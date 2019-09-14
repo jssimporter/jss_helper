@@ -20,7 +20,6 @@
 Class for managing a JSS connection.
 """
 
-
 import jss
 
 
@@ -31,7 +30,7 @@ class JSSConnection(object):
 
     @classmethod
     def setup(cls, args=None):
-        """Set up the jss connection class variable.
+        """Set up the JSSConnection class variable.
 
         Each client that imports jss_connection.JSSConnection has its
         own class variables. This function will configure properties on
@@ -39,7 +38,7 @@ class JSSConnection(object):
 
         Args:
             args: Argparser namespace with properties:
-                ssl: (Bool) Verify SSL traffic.
+                nossl: (Bool) Do not verify SSL traffic.
                 verbose: (Bool) Verbose output.
         """
         cls._jss_prefs = jss.JSSPrefs()
@@ -47,8 +46,9 @@ class JSSConnection(object):
 
         if args:
             args_dict = vars(args)
-            if "ssl" in args_dict:
-                cls._jss.session.verify = args.ssl
+            if "nossl" in args_dict:
+                ssl = not args.nossl
+                cls._jss.session.verify = ssl
             if "verbose" in args_dict:
                 cls._jss.verbose = args.verbose
 

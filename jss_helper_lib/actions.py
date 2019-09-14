@@ -25,7 +25,7 @@ import argparse
 import sys
 
 import jss
-from jss_helper_lib.jss_connection import JSSConnection
+from .jss_connection import JSSConnection
 from . import tools
 
 
@@ -35,11 +35,13 @@ def build_argument_parser():
     Returns: A configured argparse parser.
     """
     # Create our argument parser
-    parser = argparse.ArgumentParser(description="Query the JSS.")
+    parser = argparse.ArgumentParser(description="Query the Jamf Pro Server.")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Verbose output.")
-    parser.add_argument("--ssl", default=False, action="store_true",
-                        help="Use SSL verification")
+    parser.add_argument("--nossl", default=False, action="store_true",
+                        help="Prevent SSL verification")
+    parser.add_argument("--ssl", default=True, action="store_true",
+                        help="Does nothing, because ssl is now the default.")
     subparser = parser.add_subparsers(dest="subparser_name", title="Actions",
                                       metavar="")
 
@@ -395,9 +397,9 @@ def _group_search_or_modify(group_search_method, member_search_method, args):
     """Perform a group search or add/remove devices from group.
 
     Args:
-        group_search_method: Func to search JSS for groups.
+        group_search_method: Func to search the Jamf Pro Server for groups.
             (i.e. jss.JSS.ComputerGroup or jss.JSS.MobileDeviceGroup)
-        member_search_method: Func to search JSS for devices.
+        member_search_method: Func to search the Jamf Pro Server for devices.
             (i.e. jss.JSS.Computer or jss.JSS.MobileDevice)
         args: argparser args with properties:
             search: Name or ID of computer group.
@@ -412,7 +414,7 @@ def _group_search_or_modify(group_search_method, member_search_method, args):
     elif args.search and (args.add or args.remove):
         try:
             group = group_search_method(args.search)
-        except jss.exceptions.JSSGetError:
+        except jss.exceptions.GetError:
             print "Group not found."
             sys.exit(1)
 

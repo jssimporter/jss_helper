@@ -32,7 +32,7 @@ from urllib import quote
 import jss
 
 
-REQUIRED_PYTHON_JSS_VERSION = StrictVersion("1.3.0")
+REQUIRED_PYTHON_JSS_VERSION = StrictVersion("2.0.1")
 WILDCARDS = "*?[]"
 
 
@@ -114,18 +114,18 @@ def search_for_object(obj_method, search):
         for obj in wildcard_results:
             try:
                 results.append(obj_method(obj["name"]))
-            except jss.JSSGetError:
+            except jss.GetError:
                 continue
     else:
         if search:
             try:
                 results = [obj_method(search)]
-            except jss.JSSGetError:
+            except jss.GetError:
                 pass
         else:
             try:
                 results = obj_method()
-            except jss.JSSGetError:
+            except jss.GetError:
                 pass
 
     return results

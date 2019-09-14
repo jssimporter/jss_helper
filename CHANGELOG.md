@@ -3,7 +3,15 @@
 All notable changes to this project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 
-## [Unreleased][unreleased]
+## [2.1.0b1] - 2019-09-14 - 2.1.0b1
+
+### Changed
+
+- `jss_helper` now uses the python-jss that is installed along with JSSImporter.
+- The version of python-jss must be equal to or greater than 2.0.1
+- AutoPkg preferences (com.github.autopkg) are now used.
+- SSL is now set by default. Use the `--nossl` flag to prevent it.
+
 
 ## [2.0.2] - 2015-08-14 - Narwhal Tears in Unicode
 
@@ -11,6 +19,7 @@ All notable changes to this project will be documented in this file. This projec
 
 - Basic search functions now print unicode characters without freaking out.
 - Should accept unicode arguments as well.
+
 
 ## [2.0.1] - 2015-06-10 - Narwhal Tears
 
@@ -23,7 +32,7 @@ All notable changes to this project will be documented in this file. This projec
 - `installs` now includes imaging configurations (`ComputerConfiguration`) (#3) Thanks again to @homebysix for the idea.
 - Added action `excluded` for showing policies and profiles from which a group is excluded. (#5) (@homebysix again!)
 - Added action `md_excluded` for showing profiles from which a mobile device group is excluded.
-- Most actions that take a search argument will now accept Unix-shell style wildcard characters for matching. 
+- Most actions that take a search argument will now accept Unix-shell style wildcard characters for matching.
 	- Actions incorporating wildcard searches:
 		- All object search functions (`computer`, `policy`, etc)
 		- `installs`
@@ -84,4 +93,3 @@ This release changes the names of verbs and simplifies the arguments for running
 [2.0.2]: https://github.com/sheagcraig/jss_helper/compare/2.0.1....2.0.2
 [2.0.1]: https://github.com/sheagcraig/jss_helper/compare/v2.0.0...2.0.1
 [2.0.0]: https://github.com/sheagcraig/jss_helper/compare/v1.0...2.0.0
-
