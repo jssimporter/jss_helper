@@ -22,14 +22,136 @@ Functions called by jss_helper, implementing all top-level actions.
 
 
 import argparse
+import os
 import sys
 
+sys.path.insert(0, '/Library/Application Support/JSSImporter')
+
 import jss
+
 from .jss_connection import JSSConnection
 from . import tools
 
+# pylint: disable=no-name-in-module
+from Foundation import (NSData,
+                        NSPropertyListSerialization,
+                        NSPropertyListMutableContainersAndLeaves,
+                        NSPropertyListXMLFormat_v1_0)
+# pylint: enable=no-name-in-module
 
-def build_argument_parser():
+
+# Globals
+# Edit these if you want to change their default values.
+AUTOPKG_PREFERENCES = "~/Library/Preferences/com.github.autopkg.plist"
+PYTHON_JSS_PREFERENCES = (
+    "~/Library/Preferences/com.github.sheagcraig.python-jss.plist")
+
+
+class Plist(dict):
+    """Abbreviated plist representation (as a dict)."""
+
+    def __init__(self, filename=None):
+        """Init a Plist, optionally from parsing an existing file.
+
+        Args:
+            filename: String path to a plist file.
+        """
+        if filename:
+            dict.__init__(self, self.read_file(filename))
+        else:
+            dict.__init__(self)
+            self.new_plist()
+
+    def read_file(self, path):
+        """Replace internal XML dict with data from plist at path.
+
+        Args:
+            path: String path to a plist file.
+
+        Raises:
+            PlistParseError: Error in reading plist file.
+        """
+        # pylint: disable=unused-variable
+        info, pformat, error = (
+            NSPropertyListSerialization.propertyListWithData_options_format_error_(
+                NSData.dataWithContentsOfFile_(os.path.expanduser(path)),
+                NSPropertyListMutableContainersAndLeaves,
+                None,
+                None
+            ))
+        # pylint: enable=unused-variable
+        if info is None:
+            if error is None:
+                error = "Invalid plist file."
+            raise PlistParseError("Can't read %s: %s" % (path, error))
+
+        return info
+
+    def write_plist(self, path):
+        """Write plist to path.
+
+        Args:
+            path: String path to desired plist file.
+
+        Raises:
+            PlistDataError: There was an error in the data.
+            PlistWriteError: Plist could not be written.
+        """
+        plist_data, error = NSPropertyListSerialization.dataWithPropertyList_format_options_error_(
+            self,
+            NSPropertyListXMLFormat_v1_0,
+            0,
+            None)
+        if plist_data is None:
+            if error is None:
+                error = "Failed to serialize data to plist."
+            raise PlistDataError(error)
+        else:
+            if not plist_data.writeToFile_atomically_(
+                    os.path.expanduser(path), True):
+                raise PlistWriteError("Failed writing data to %s" % path)
+
+    def new_plist(self):
+        """Generate a barebones recipe plist."""
+        # Not implemented at this time.
+        pass
+
+
+def connect():
+    """make the connection to the JSS"""
+
+    # get AutoPkg configuration settings for JSSImporter,
+    # and barring that, get python-jss settings.
+    if os.path.exists(os.path.expanduser(AUTOPKG_PREFERENCES)):
+        autopkg_env = Plist(AUTOPKG_PREFERENCES)
+        connection = map_jssimporter_prefs(autopkg_env)
+        print "Preferences: %s\n" % AUTOPKG_PREFERENCES
+    elif os.path.exists(os.path.expanduser(PYTHON_JSS_PREFERENCES)):
+        jss_env = Plist(PYTHON_JSS_PREFERENCES)
+        connection = map_jssimporter_prefs(jss_env)
+        print "Preferences: %s\n" % PYTHON_JSS_PREFERENCES
+    else:
+        sys.exit("No python-jss or AutoPKG/JSSImporter configuration "
+                     "file!")
+    JSSConnection.setup(connection)
+
+
+def map_jssimporter_prefs(prefs):
+    """Convert python-jss preferences to JSSImporter preferences."""
+    connection = {}
+    connection["url"] = prefs["JSS_URL"]
+    connection["user"] = prefs["API_USERNAME"]
+    connection["password"] = prefs["API_PASSWORD"]
+    connection["ssl_verify"] = prefs.get("JSS_VERIFY_SSL", True)
+    connection["suppress_warnings"] = prefs.get("JSS_SUPPRESS_WARNINGS", True)
+    connection["jss_migrated"] = prefs.get("JSS_MIGRATED", True)
+    connection["repo_prefs"] = prefs.get("JSS_REPOS")
+    print('JSS: {}'.format(connection["url"]))
+
+    return connection
+
+
+def build_argparser():
     """Build the argument parser for jss_helper.
 
     Returns: A configured argparse parser.
@@ -37,9 +159,9 @@ def build_argument_parser():
     # Create our argument parser
     parser = argparse.ArgumentParser(description="Query the Jamf Pro Server.")
     parser.add_argument("-v", "--verbose", action="store_true",
-                        help="Verbose output.")
+                        help="Verbose output (does nothing at present).")
     parser.add_argument("--nossl", default=False, action="store_true",
-                        help="Prevent SSL verification")
+                        help="Does nothing, because JSS_VERIFY_SSL is now used.")
     parser.add_argument("--ssl", default=True, action="store_true",
                         help="Does nothing, because ssl is now the default.")
     subparser = parser.add_subparsers(dest="subparser_name", title="Actions",

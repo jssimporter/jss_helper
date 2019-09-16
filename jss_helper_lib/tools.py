@@ -29,6 +29,8 @@ import subprocess
 import sys
 from urllib import quote
 
+sys.path.insert(0, '/Library/Application Support/JSSImporter')
+
 import jss
 
 
@@ -48,6 +50,8 @@ def version_check():
         print "Requires python-jss version: %s. Installed: %s" % (
             (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
         sys.exit(1)
+
+    return python_jss_version
 
 
 def build_results_string(heading, results):

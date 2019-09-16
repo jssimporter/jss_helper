@@ -3,13 +3,27 @@
 All notable changes to this project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [2.1.0b2] - 2019-09-16 - 2.1.0b2
+
+### Fixed
+
+- AutoPkg preferences `com.github.autopkg` are now used. Note that you may need to extend the privileges of
+  your AutoPkg API user to cover the manipulation of confiuguration profiles (other privileges are also most
+  likely required - the wiki will be updated as this is figured out).
+
+### Changed
+
+- Actions `-v`, `--ssl`, `--nossl` no longer do anything.
+- SSL is now set by default. Override this in your AutoPkg preferences with the `JSS_VERIFY_SSL` key.
+
+
 ## [2.1.0b1] - 2019-09-14 - 2.1.0b1
 
 ### Changed
 
 - `jss_helper` now uses the python-jss that is installed along with JSSImporter.
 - The version of python-jss must be equal to or greater than 2.0.1
-- AutoPkg preferences (com.github.autopkg) are now used.
+- ~~AutoPkg preferences (com.github.autopkg) are now used.~~ This doesn't work in 2.1.0b1.
 - SSL is now set by default. Use the `--nossl` flag to prevent it.
 
 

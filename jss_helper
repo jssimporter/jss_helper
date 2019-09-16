@@ -74,27 +74,31 @@ Actions:
 """
 
 
+import os
 import sys
 
-from jss_helper_lib import actions
 from jss_helper_lib import JSSConnection
+from jss_helper_lib import actions
 from jss_helper_lib import tools
 
+sys.path.insert(0, '/Library/Application Support/JSSImporter')
 
-__version__ = "2.1.0b1"
+import jss
+
+
+__version__ = "2.1.0b2"
 
 
 def main():
     """Run as a cli command."""
-    tools.version_check()
+    python_jss_version = tools.version_check()
 
-    parser = actions.build_argument_parser()
+    print("\n++ jss_helper: %s ++ "
+          "python-jss: %s ++\n" % (__version__, python_jss_version))
+    actions.connect()
+
+    parser = actions.build_argparser()
     args = parser.parse_args()
-
-    # Ensure that JSSConnection has the same configuration in all
-    # namespaces.
-    JSSConnection.setup(args)
-    actions.JSSConnection.setup(args)
 
     try:
         args.func(args)

@@ -20,13 +20,9 @@
 JSS actions and helper functions for jss_helper.
 """
 
-import sys
-
-sys.path.insert(0, '/Library/Application Support/JSSImporter')
-
 from . import actions
 from .jss_connection import JSSConnection
 from . import tools
 
 
-__version__ = "2.1.0b1"
+__version__ = "2.1.0b2"

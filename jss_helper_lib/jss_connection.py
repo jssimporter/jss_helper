@@ -29,7 +29,7 @@ class JSSConnection(object):
     _jss = None
 
     @classmethod
-    def setup(cls, args=None):
+    def setup(cls, connection=None):
         """Set up the JSSConnection class variable.
 
         Each client that imports jss_connection.JSSConnection has its
@@ -37,20 +37,38 @@ class JSSConnection(object):
         the current namespace's JSSConnection prior to use.
 
         Args:
-            args: Argparser namespace with properties:
-                nossl: (Bool) Do not verify SSL traffic.
-                verbose: (Bool) Verbose output.
+            connection: Dictionary with JSS connection info, keys:
+                jss_prefs: String path to a preference file.
+                url: Path with port to a JSS.
+                user: API Username.
+                password: API Password.
+                repo_prefs: A list of dicts with repository names and
+                    passwords. See JSSPrefs.
+                ssl_verify: Boolean indicating whether to verify SSL
+                    certificates.  Defaults to True.
+                verbose: Boolean indicating the level of logging.
+                    (Doesn't do much.)
         """
-        cls._jss_prefs = jss.JSSPrefs()
-        cls._jss = jss.JSS(jss_prefs=cls._jss_prefs)
+        # cls._jss_prefs = jss.JSSPrefs()
+        # cls._jss = jss.JSS(jss_prefs=cls._jss_prefs)
 
-        if args:
-            args_dict = vars(args)
-            if "nossl" in args_dict:
-                ssl = not args.nossl
-                cls._jss.session.verify = ssl
-            if "verbose" in args_dict:
-                cls._jss.verbose = args.verbose
+        if not connection:
+            connection = {"jss_prefs": jss.JSSPrefs()}
+        cls._jss_prefs = connection
+        if isinstance(connection, jss.JSSPrefs):
+            cls._jss = jss.JSS(jss_prefs=cls._jss_prefs)
+        else:
+            cls._jss = jss.JSS(**cls._jss_prefs)
+
+        # if args:
+        #     args_dict = vars(args)
+        #     if "nossl" in args_dict:
+        #         ssl = not args.nossl
+        #         cls._jss.session.verify = ssl
+        #     if "verbose" in args_dict:
+        #         cls._jss.verbose = args.verbose
+
+
 
     @classmethod
     def get(cls):
