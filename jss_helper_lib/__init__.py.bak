@@ -20,7 +20,6 @@
 JSS actions and helper functions for jss_helper.
 """
 
-from __future__ import absolute_import
 from . import actions
 from .jss_connection import JSSConnection
 from . import tools

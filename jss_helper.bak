@@ -74,8 +74,6 @@ Actions:
 """
 
 
-from __future__ import absolute_import
-from __future__ import print_function
 import os
 import sys
 
@@ -95,8 +93,8 @@ def main():
     """Run as a cli command."""
     python_jss_version = tools.version_check()
 
-    print(("\n++ jss_helper: %s ++ "
-          "python-jss: %s ++\n" % (__version__, python_jss_version)))
+    print("\n++ jss_helper: %s ++ "
+          "python-jss: %s ++\n" % (__version__, python_jss_version))
     actions.connect()
 
     parser = actions.build_argparser()
