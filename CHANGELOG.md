@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.2.0b1] - 2020-02-13 - 2.2.0b1
+
+### Changed
+
+- Updated to work with python3. Requires AutoPkg's python to be installed, so requires a minimum of:
+	* AutoPkg 2.0.2
+	* JSSImporter 1.1.0
+	* python-jss 2.1.0
+	
 
 ## [2.1.0b2] - 2019-09-16 - 2.1.0b2
 
