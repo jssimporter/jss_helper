@@ -26,4 +26,4 @@ from .jss_connection import JSSConnection
 from . import tools
 
 
-__version__ = "2.2.0b1"
+__version__ = "2.2.0b2"

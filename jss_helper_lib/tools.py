@@ -23,7 +23,8 @@ Support functions for jss_helper.
 
 from __future__ import absolute_import
 from __future__ import print_function
-from distutils.version import StrictVersion, LooseVersion
+from distutils.version import StrictVersion
+from packaging.version import parse as LooseVersion
 import fnmatch
 from operator import itemgetter
 import re
@@ -405,9 +406,12 @@ def get_updatable_policies(policies, packages):
         for package in packages_installed:
             pkg_name, pkg_version = get_package_info(package)
             if pkg_name in multiples:
-                if LooseVersion(pkg_version) < max(multiples[pkg_name]):
-                    updates_available.append(policy)
-                    break
+                try:
+                    if LooseVersion(pkg_version) < max(multiples[pkg_name]):
+                        updates_available.append(policy)
+                        break
+                except TypeError:
+                    pass
 
     # Make a new list of just names (rather than the full XML)
     updates_available_names = [policy.findtext("general/name") for policy in

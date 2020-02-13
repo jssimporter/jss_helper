@@ -5,3 +5,4 @@
 *.pkg
 *.DS_Store
 local_tests/*
+pkg/jss_helper/payload/*

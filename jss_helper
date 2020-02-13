@@ -88,7 +88,7 @@ sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
 import jss
 
 
-__version__ = "2.2.0b1"
+__version__ = "2.2.0b2"
 
 
 def main():
@@ -103,7 +103,12 @@ def main():
     args = parser.parse_args()
 
     try:
-        args.func(args)
+        func = args.func
+    except AttributeError:
+        parser.error("too few arguments")
+    
+    try:
+        func(args)
     except KeyboardInterrupt:
         # User wishes to bail.
         sys.exit(1)

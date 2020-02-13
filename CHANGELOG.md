@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+
+## [2.2.0b2] - 2020-02-13 - 2.2.0b2
+
+### Changed
+
+- Changed from distutils to packaging as `distutils.version.LooseVersion` was not working properly in python3.
+- `packaging` module is not included in the AutoPkg python distribution so it is now bundled into the 
+  jss_helper package.
+- Fixed output if running `jss_helper` without any arguments.
+	
+
 ## [2.2.0b1] - 2020-02-13 - 2.2.0b1
 
 ### Changed
@@ -10,7 +21,7 @@ All notable changes to this project will be documented in this file. This projec
 	* AutoPkg 2.0.2
 	* JSSImporter 1.1.0
 	* python-jss 2.1.0
-	
+
 
 ## [2.1.0b2] - 2019-09-16 - 2.1.0b2
 

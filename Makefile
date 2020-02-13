@@ -4,7 +4,8 @@ PKG_ROOT := $(CURDIR)/pkg/jss_helper/payload
 PKG_BUILD := $(CURDIR)/pkg/jss_helper/build
 PKG_VERSION := $(shell defaults read $(CURDIR)/pkg/jss_helper/build-info.plist version)
 
-objects = $(PKG_ROOT)/usr/local/bin/jss_helper \
+objects = $(PKG_ROOT)/Library/AutoPkg/JSSImporter/packaging \
+	$(PKG_ROOT)/usr/local/bin/jss_helper \
 	$(PKG_ROOT)/usr/local/bin/jss_helper_lib
 
 
@@ -14,6 +15,12 @@ default : $(PKG_BUILD)/jss_helper-$(PKG_VERSION).pkg
 
 $(PKG_BUILD)/jss_helper-$(PKG_VERSION).pkg: $(objects)
 	cd $(CURDIR)/pkg && $(MUNKIPKG) jss_helper
+
+
+$(PKG_ROOT)/Library/AutoPkg/JSSImporter/packaging:
+	@echo "Installing packaging into JSSImporter support directory"
+	#pip install --install-option="--prefix=$(PKG_ROOT)/Library/AutoPkg/JSSImporter/packaging" --ignore-installed packaging
+	pip3 install --target "$(PKG_ROOT)/Library/AutoPkg/JSSImporter" --ignore-installed packaging
 
 
 $(PKG_ROOT)/usr/local/bin/jss_helper:
