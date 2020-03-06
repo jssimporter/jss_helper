@@ -27,6 +27,7 @@ from distutils.version import StrictVersion
 from packaging.version import parse as LooseVersion
 import fnmatch
 from operator import itemgetter
+import os.path
 import re
 import subprocess
 import sys
@@ -35,16 +36,18 @@ from six.moves import range
 from six.moves import zip
 from six.moves import input
 
-sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
-
-import jss
+if os.path.isdir('/Library/AutoPkg/JSSImporter'):
+    sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
+    import jss
+else:
+    raise Exception('python-jss is not installed!')
 
 
 REQUIRED_PYTHON_JSS_VERSION = StrictVersion("2.1.0")
 WILDCARDS = "*?[]"
 
 
-# General Functions ###########################################################
+# General Functions 
 def version_check():
     """Ensure we have the right version of python-jss."""
     try:
@@ -123,7 +126,7 @@ def search_for_object(obj_method, search):
         wildcard_results = wildcard_search(obj_method(), search)
         for obj in wildcard_results:
             try:
-                results.append(obj_method(obj["name"]))
+                results.append(obj_method(obj.name))
             except jss.GetError:
                 continue
     else:
@@ -287,11 +290,8 @@ def create_search_func(obj_method):
 
         if not results:
             print("Object: %s does not exist!" % args.search)
-        elif len(results) > 1:
-            print(build_results_string(None, results))
         else:
-            for result in results:
-                print(result)
+            print(build_results_string(None, results))
 
     return search_func
 

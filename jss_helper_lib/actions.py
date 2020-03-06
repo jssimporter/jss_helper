@@ -24,12 +24,14 @@ Functions called by jss_helper, implementing all top-level actions.
 from __future__ import absolute_import
 from __future__ import print_function
 import argparse
-import os
+import os.path
 import sys
 
-sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
-
-import jss
+if os.path.isdir('/Library/AutoPkg/JSSImporter'):
+    sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
+    import jss
+else:
+    raise Exception('python-jss is not installed!')
 
 from .jss_connection import JSSConnection
 from . import tools

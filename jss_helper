@@ -79,13 +79,15 @@ from __future__ import print_function
 import os
 import sys
 
+if os.path.isdir('/Library/AutoPkg/JSSImporter'):
+    sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
+    import jss
+else:
+    raise Exception('python-jss is not installed!')
+
 from jss_helper_lib import JSSConnection
 from jss_helper_lib import actions
 from jss_helper_lib import tools
-
-sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
-
-import jss
 
 
 __version__ = "2.2.0b2"

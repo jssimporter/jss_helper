@@ -22,11 +22,14 @@ Class for managing a JSS connection.
 
 from __future__ import absolute_import
 
+import os.path
 import sys
 
-sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
-
-import jss
+if os.path.isdir('/Library/AutoPkg/JSSImporter'):
+    sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
+    import jss
+else:
+    raise Exception('python-jss is not installed!')
 
 
 class JSSConnection(object):
