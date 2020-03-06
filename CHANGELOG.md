@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 
+## [2.2.0b3] - 2020-03-06 - 2.2.0b3
+
+### Fixed
+
+- Fixed listing categories (#27)
+
+
 ## [2.2.0b2] - 2020-02-13 - 2.2.0b2
 
 ### Changed
@@ -11,7 +18,7 @@ All notable changes to this project will be documented in this file. This projec
 - `packaging` module is not included in the AutoPkg python distribution so it is now bundled into the 
   jss_helper package.
 - Fixed output if running `jss_helper` without any arguments.
-	
+
 
 ## [2.2.0b1] - 2020-02-13 - 2.2.0b1
 
