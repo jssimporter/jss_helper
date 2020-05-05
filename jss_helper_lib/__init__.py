@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/local/autopkg/python
 # Copyright (C) 2014, 2015 Shea G Craig <shea.craig@da.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -20,9 +20,19 @@
 JSS actions and helper functions for jss_helper.
 """
 
+from __future__ import absolute_import
+import os
+import sys
+
+if os.path.isdir('/Library/AutoPkg/JSSImporter'):
+    sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
+    import jss
+else:
+    raise Exception('python-jss is not installed!')
+
 from . import actions
 from .jss_connection import JSSConnection
 from . import tools
 
 
-__version__ = "2.1.0b2"
+__version__ = "2.2.0b2"

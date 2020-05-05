@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/local/autopkg/python
 # Copyright (C) 2014-2015 Shea G Craig <shea.craig@da.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -21,24 +21,33 @@ Support functions for jss_helper.
 """
 
 
-from distutils.version import StrictVersion, LooseVersion
+from __future__ import absolute_import
+from __future__ import print_function
+from distutils.version import StrictVersion
+from packaging.version import parse as LooseVersion
 import fnmatch
 from operator import itemgetter
+import os.path
 import re
 import subprocess
 import sys
-from urllib import quote
+from six.moves.urllib.parse import quote
+from six.moves import range
+from six.moves import zip
+from six.moves import input
 
-sys.path.insert(0, '/Library/Application Support/JSSImporter')
+if os.path.isdir('/Library/AutoPkg/JSSImporter'):
+    sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
+    import jss
+else:
+    raise Exception('python-jss is not installed!')
 
-import jss
 
-
-REQUIRED_PYTHON_JSS_VERSION = StrictVersion("2.0.1")
+REQUIRED_PYTHON_JSS_VERSION = StrictVersion("2.1.0")
 WILDCARDS = "*?[]"
 
 
-# General Functions ###########################################################
+# General Functions 
 def version_check():
     """Ensure we have the right version of python-jss."""
     try:
@@ -47,8 +56,8 @@ def version_check():
         python_jss_version = StrictVersion("0.0.0")
 
     if python_jss_version < REQUIRED_PYTHON_JSS_VERSION:
-        print "Requires python-jss version: %s. Installed: %s" % (
-            (REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
+        print("Requires python-jss version: %s. Installed: %s" % (
+            (REQUIRED_PYTHON_JSS_VERSION, python_jss_version)))
         sys.exit(1)
 
     return python_jss_version
@@ -117,7 +126,7 @@ def search_for_object(obj_method, search):
         wildcard_results = wildcard_search(obj_method(), search)
         for obj in wildcard_results:
             try:
-                results.append(obj_method(obj["name"]))
+                results.append(obj_method(obj.name))
             except jss.GetError:
                 continue
     else:
@@ -200,8 +209,10 @@ def find_objects_in_containers(search_objects, search_path, containers):
     search_names = [obj.name for obj in search_objects]
     for obj in full_objects:
         for element in obj.findall(search_path):
-            if (element.findtext("id") in search_ids or
-                    element.findtext("name") in search_names):
+            search_id = element.findtext("id")
+            search_name = element.findtext("name")
+            if ((search_id in search_ids or
+                    search_name in search_names) and obj not in results):
                 results.append(obj)
     return results
 
@@ -278,12 +289,9 @@ def create_search_func(obj_method):
         results = search_for_object(obj_method, args.search)
 
         if not results:
-            print "Object: %s does not exist!" % args.search
-        elif len(results) > 1:
-            print build_results_string(None, results).encode("utf_8")
+            print("Object: %s does not exist!" % args.search)
         else:
-            for result in results:
-                print result
+            print(build_results_string(None, results))
 
     return search_func
 
@@ -314,8 +322,8 @@ def diff(text1, text2):
     Returns:
         Output from sdiff.
     """
-    output_tuple = zip(("/tmp/jss_helper_diff_%s.txt" % num for num in
-                        xrange(2)), (text1, text2))
+    output_tuple = list(zip(("/tmp/jss_helper_diff_%s.txt" % num for num in
+                        range(2)), (text1, text2)))
     for filename, text in output_tuple:
         write_text_to_file(filename, text)
     # Diff will return 1 if files differ, so we have to catch that
@@ -353,7 +361,7 @@ def add_group_members(group, members):
     elif isinstance(group, jss.MobileDeviceGroup):
         add_method = group.add_mobile_device
     for member in members:
-        print "Adding %s to %s" % (member.name, group.name)
+        print("Adding %s to %s" % (member.name, group.name))
         add_method(member)
 
 
@@ -364,11 +372,11 @@ def remove_group_members(group, members):
     elif isinstance(group, jss.MobileDeviceGroup):
         remove_method = group.remove_mobile_device
     for member in members:
-        print "Removing %s from %s" % (member.name, group.name)
+        print("Removing %s from %s" % (member.name, group.name))
         try:
             remove_method(member)
         except ValueError:
-            print "%s is not a member; not removing." % member.name
+            print("%s is not a member; not removing." % member.name)
 
 
 # Promotion functions #########################################################
@@ -398,9 +406,12 @@ def get_updatable_policies(policies, packages):
         for package in packages_installed:
             pkg_name, pkg_version = get_package_info(package)
             if pkg_name in multiples:
-                if LooseVersion(pkg_version) < max(multiples[pkg_name]):
-                    updates_available.append(policy)
-                    break
+                try:
+                    if LooseVersion(pkg_version) < max(multiples[pkg_name]):
+                        updates_available.append(policy)
+                        break
+                except TypeError:
+                    pass
 
     # Make a new list of just names (rather than the full XML)
     updates_available_names = [policy.findtext("general/name") for policy in
@@ -420,7 +431,7 @@ def log_warning(url, policy):
             value = policy.findtext("general/" + trigger)
             # Value can be string "false" or "" for "trigger_other".
             if value not in [None, "False"]:
-                print "Remember to flush the policy logs!"
+                print("Remember to flush the policy logs!")
                 open_policy_log_in_browser(url, policy)
                 break
 
@@ -560,7 +571,7 @@ def prompt_user(options, expandable=False, flags=None):
     # Ask user to select an option until they make a valid choice.
     result = None
     while not result:
-        choice = raw_input(_input_menu_text(expandable, flags))
+        choice = input(_input_menu_text(expandable, flags))
         if choice.isdigit() and in_range(int(choice), len(options)):
             result = options[int(choice)]
         elif choice.upper() == "F" and expandable:
@@ -579,7 +590,7 @@ def prompt_user(options, expandable=False, flags=None):
             if results:
                 result = results.pop()
         else:
-            print "Invalid choice!"
+            print("Invalid choice!")
 
     return result
 
@@ -633,7 +644,7 @@ def display_options_list(options):
     fmt_string = u"{0[0]:>{length}}: {0[1]}"
     choices = "\n".join([fmt_string.format(option, length=length) for option in
                          enumerate(options)])
-    print "\n" + choices
+    print("\n" + choices)
 
 
 def update_name(policy, cur_pkg_name, new_pkg_name):
@@ -664,8 +675,8 @@ def update_name(policy, cur_pkg_name, new_pkg_name):
         name = policy_name_element.text
         new_name = name.replace(cur_pkg_basename, new_pkg_basename)
         new_name = new_name.replace(cur_pkg_version, new_pkg_version)
-        print "Old name: %s" % name
-        print "New name: %s" % new_name
+        print("Old name: %s" % name)
+        print("New name: %s" % new_name)
         policy_name_element.text = new_name
     else:
         raise ValueError("Unable to update policy name!")
@@ -717,7 +728,7 @@ def policy_menu(policy_list, package_list):
            "have newer packages available...")
     # Get full policy XML for all policies.
     #jss_connection = JSSConnection.get()
-    print "Retrieving %i policies. Please wait..." % len(policy_list)
+    print("Retrieving %i policies. Please wait..." % len(policy_list))
     all_policies = policy_list.retrieve_all()
 
     # Get lists of policies with available updates, and all

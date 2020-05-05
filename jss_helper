@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/local/autopkg/python
 # Copyright (C) 2014-2015 Shea G Craig <shea.craig@da.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -74,34 +74,43 @@ Actions:
 """
 
 
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 import sys
+
+if os.path.isdir('/Library/AutoPkg/JSSImporter'):
+    sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
+    import jss
+else:
+    raise Exception('python-jss is not installed!')
 
 from jss_helper_lib import JSSConnection
 from jss_helper_lib import actions
 from jss_helper_lib import tools
 
-sys.path.insert(0, '/Library/Application Support/JSSImporter')
 
-import jss
-
-
-__version__ = "2.1.0b2"
+__version__ = "2.2.0b3"
 
 
 def main():
     """Run as a cli command."""
     python_jss_version = tools.version_check()
 
-    print("\n++ jss_helper: %s ++ "
-          "python-jss: %s ++\n" % (__version__, python_jss_version))
+    print(("\n++ jss_helper: %s ++ "
+          "python-jss: %s ++\n" % (__version__, python_jss_version)))
     actions.connect()
 
     parser = actions.build_argparser()
     args = parser.parse_args()
 
     try:
-        args.func(args)
+        func = args.func
+    except AttributeError:
+        parser.error("too few arguments")
+    
+    try:
+        func(args)
     except KeyboardInterrupt:
         # User wishes to bail.
         sys.exit(1)

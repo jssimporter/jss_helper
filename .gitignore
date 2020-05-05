@@ -1,6 +1,8 @@
+.vscode/*
 *.pyc
 *.swp
 .ropeproject
 *.pkg
 *.DS_Store
 local_tests/*
+pkg/jss_helper/payload/*

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/local/autopkg/python
 # Copyright (C) 2014-2015 Shea G Craig <shea.craig@da.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,16 @@
 Class for managing a JSS connection.
 """
 
-import jss
+from __future__ import absolute_import
+
+import os.path
+import sys
+
+if os.path.isdir('/Library/AutoPkg/JSSImporter'):
+    sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
+    import jss
+else:
+    raise Exception('python-jss is not installed!')
 
 
 class JSSConnection(object):

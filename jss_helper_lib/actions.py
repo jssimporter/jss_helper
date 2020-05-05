@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/local/autopkg/python
 # Copyright (C) 2014-2015 Shea G Craig <shea.craig@da.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -21,13 +21,17 @@ Functions called by jss_helper, implementing all top-level actions.
 """
 
 
+from __future__ import absolute_import
+from __future__ import print_function
 import argparse
-import os
+import os.path
 import sys
 
-sys.path.insert(0, '/Library/Application Support/JSSImporter')
-
-import jss
+if os.path.isdir('/Library/AutoPkg/JSSImporter'):
+    sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
+    import jss
+else:
+    raise Exception('python-jss is not installed!')
 
 from .jss_connection import JSSConnection
 from . import tools
@@ -125,11 +129,11 @@ def connect():
     if os.path.exists(os.path.expanduser(AUTOPKG_PREFERENCES)):
         autopkg_env = Plist(AUTOPKG_PREFERENCES)
         connection = map_jssimporter_prefs(autopkg_env)
-        print "Preferences: %s\n" % AUTOPKG_PREFERENCES
+        print("Preferences: %s\n" % AUTOPKG_PREFERENCES)
     elif os.path.exists(os.path.expanduser(PYTHON_JSS_PREFERENCES)):
         jss_env = Plist(PYTHON_JSS_PREFERENCES)
         connection = map_jssimporter_prefs(jss_env)
-        print "Preferences: %s\n" % PYTHON_JSS_PREFERENCES
+        print("Preferences: %s\n" % PYTHON_JSS_PREFERENCES)
     else:
         sys.exit("No python-jss or AutoPKG/JSSImporter configuration "
                      "file!")
@@ -146,7 +150,7 @@ def map_jssimporter_prefs(prefs):
     connection["suppress_warnings"] = prefs.get("JSS_SUPPRESS_WARNINGS", True)
     connection["jss_migrated"] = prefs.get("JSS_MIGRATED", True)
     connection["repo_prefs"] = prefs.get("JSS_REPOS")
-    print('JSS: {}'.format(connection["url"]))
+    print(('JSS: {}'.format(connection["url"])))
 
     return connection
 
@@ -360,7 +364,7 @@ def get_scoped(args):
         args: argparser args with properties:
             group: Name or ID of computer group.
     """
-    print _get_scoped(args.group)
+    print(_get_scoped(args.group))
 
 
 def _get_scoped(search_group):
@@ -406,7 +410,7 @@ def get_md_scoped(args):
         args: argparser args with properties:
             group: Name or ID of group.
     """
-    print _get_md_scoped(args.group)
+    print(_get_md_scoped(args.group))
 
 
 def _get_md_scoped(search_group):
@@ -443,7 +447,7 @@ def get_group_scope_diff(args):
     """
     results1 = _get_scoped(args.group1)
     results2 = _get_scoped(args.group2)
-    print tools.diff(results1, results2)
+    print(tools.diff(results1, results2))
 
 
 def get_md_scope_diff(args):
@@ -456,7 +460,7 @@ def get_md_scope_diff(args):
     """
     results1 = _get_md_scoped(args.group1)
     results2 = _get_md_scoped(args.group2)
-    print tools.diff(results1, results2)
+    print(tools.diff(results1, results2))
 
 
 def batch_scope(args):
@@ -470,15 +474,15 @@ def batch_scope(args):
     """
     jss_connection = JSSConnection.get()
     groups = tools.search_for_object(jss_connection.ComputerGroup, args.group)
-    print "Scoping to groups: %s" % ", ".join([group.name for group in groups])
-    print 79 * "-"
+    print("Scoping to groups: %s" % ", ".join([group.name for group in groups]))
+    print(79 * "-")
     for policy_query in args.policy:
         policies = tools.search_for_object(jss_connection.Policy, policy_query)
         for policy in policies:
             for group in groups:
                 policy.add_object_to_scope(group)
             policy.save()
-            print "%s: Success." % policy.name
+            print("%s: Success." % policy.name)
 
 
 def computer_group_search_or_modify(args):
@@ -531,13 +535,13 @@ def _group_search_or_modify(group_search_method, member_search_method, args):
             dry_run: Bool whether to save or just print group XML.
     """
     if not args.search and (args.add or args.remove):
-        print "Please provide a group to add or remove from."
+        print("Please provide a group to add or remove from.")
         sys.exit(1)
     elif args.search and (args.add or args.remove):
         try:
             group = group_search_method(args.search)
         except jss.exceptions.GetError:
-            print "Group not found."
+            print("Group not found.")
             sys.exit(1)
 
         if args.add:
@@ -551,7 +555,7 @@ def _group_search_or_modify(group_search_method, member_search_method, args):
             tools.remove_group_members(group, remove_members)
 
         if args.dry_run:
-            print group
+            print(group)
         else:
             group.save()
 
@@ -613,7 +617,7 @@ def _get_exclusions_by_type(group):
         results = tools.find_objects_in_containers(group, search,
                                                    item["containers"])
         output = tools.build_results_string(item["heading"] + header, results)
-        print output
+        print(output)
 
 
 def get_package_policies(args):
@@ -628,17 +632,19 @@ def get_package_policies(args):
     policies = jss_connection.Policy()
     packages = tools.search_for_object(jss_connection.Package, args.package)
 
-    results = set(tools.find_objects_in_containers(packages, search, policies))
+    # results = set(found_objects)
+    results = found_objects = tools.find_objects_in_containers(
+        packages, search, policies)
     output = tools.build_results_string("Policies which install '%s'" %
                                         args.package, results) + "\n"
 
     search = "packages/package"
     imaging_configs = jss_connection.ComputerConfiguration()
-    ic_results = set(tools.find_objects_in_containers(packages, search,
-                                                      imaging_configs))
+    ic_results = tools.find_objects_in_containers(packages, search,
+                                                      imaging_configs)
     output += tools.build_results_string("Imaging configs which install '%s'" %
                                          args.package, ic_results)
-    print output
+    print(output)
 
 
 def promote(args):
@@ -689,7 +695,7 @@ def promote(args):
         try:
             tools.update_name(policy, cur_pkg, new_pkg_name)
         except ValueError:
-            print "Unable to update policy name!"
+            print("Unable to update policy name!")
 
     # Save policy and remind user to flush logs if needed.
     policy.save()
