@@ -24,7 +24,8 @@ Support functions for jss_helper.
 from __future__ import absolute_import
 from __future__ import print_function
 from distutils.version import StrictVersion
-from packaging.version import parse as LooseVersion
+
+# from packaging.version import parse as LooseVersion
 import fnmatch
 from operator import itemgetter
 import os.path
@@ -36,18 +37,25 @@ from six.moves import range
 from six.moves import zip
 from six.moves import input
 
-if os.path.isdir('/Library/AutoPkg/JSSImporter'):
-    sys.path.insert(0, '/Library/AutoPkg/JSSImporter')
-    import jss
+if os.path.isdir("/Library/AutoPkg"):
+    sys.path.insert(0, "/Library/AutoPkg")
+    try:
+        from autopkglib import APLooseVersion as LooseVersion
+    except ModuleNotFoundError:
+        raise Exception("ERROR! AutoPkg is not installed!")
+    try:
+        import jss
+    except ModuleNotFoundError:
+        raise Exception("ERROR! python-jss is not installed!")
 else:
-    raise Exception('python-jss is not installed!')
+    raise Exception("ERROR! AutoPkg is not installed!")
 
 
 REQUIRED_PYTHON_JSS_VERSION = StrictVersion("2.1.0")
 WILDCARDS = "*?[]"
 
 
-# General Functions 
+# General Functions
 def version_check():
     """Ensure we have the right version of python-jss."""
     try:
@@ -56,8 +64,10 @@ def version_check():
         python_jss_version = StrictVersion("0.0.0")
 
     if python_jss_version < REQUIRED_PYTHON_JSS_VERSION:
-        print("Requires python-jss version: %s. Installed: %s" % (
-            (REQUIRED_PYTHON_JSS_VERSION, python_jss_version)))
+        print(
+            "Requires python-jss version: %s. Installed: %s"
+            % ((REQUIRED_PYTHON_JSS_VERSION, python_jss_version))
+        )
         sys.exit(1)
 
     return python_jss_version
@@ -81,13 +91,15 @@ def build_results_string(heading, results):
             output_string += "\n"
     # Print column aligned lists of ID and Name.
     if results:
-        if (all([isinstance(result, jss.JSSObject) for result in results]) or
-                (isinstance(results, jss.JSSObjectList) and len(results) > 0)):
+        if all([isinstance(result, jss.JSSObject) for result in results]) or (
+            isinstance(results, jss.JSSObjectList) and len(results) > 0
+        ):
             width = max([int(len(str(result.id))) for result in results])
             output_strings = []
             for i in results:
-                output_strings.append(u"ID: {:>{width}}\tNAME: {}".format(
-                    i.id, i.name, width=width))
+                output_strings.append(
+                    u"ID: {:>{width}}\tNAME: {}".format(i.id, i.name, width=width)
+                )
             output_string += "\n".join(output_strings)
         # Just print the object.
         elif isinstance(results, jss.JSSObject):
@@ -174,8 +186,7 @@ def wildcard_search(objects, pattern, case_sensitive=True):
     else:
         test_names = [(obj, obj.name) for obj in objects]
 
-    results = [obj for obj, name in test_names if
-               fnmatch.fnmatchcase(name, pattern)]
+    results = [obj for obj, name in test_names if fnmatch.fnmatchcase(name, pattern)]
 
     return results
 
@@ -211,8 +222,9 @@ def find_objects_in_containers(search_objects, search_path, containers):
         for element in obj.findall(search_path):
             search_id = element.findtext("id")
             search_name = element.findtext("name")
-            if ((search_id in search_ids or
-                    search_name in search_names) and obj not in results):
+            if (
+                search_id in search_ids or search_name in search_names
+            ) and obj not in results:
                 results.append(obj)
     return results
 
@@ -230,11 +242,11 @@ def find_groups_in_scope(groups, scopables):
     """
     if isinstance(scopables, jss.JSSObjectList):
         scopables = scopables.retrieve_all()
-    if scopables and isinstance(scopables[0],
-                                (jss.Policy, jss.OSXConfigurationProfile)):
+    if scopables and isinstance(
+        scopables[0], (jss.Policy, jss.OSXConfigurationProfile)
+    ):
         search = "scope/computer_groups/computer_group"
-    elif scopables and isinstance(scopables[0],
-                                  jss.MobileDeviceConfigurationProfile):
+    elif scopables and isinstance(scopables[0], jss.MobileDeviceConfigurationProfile):
         search = "scope/mobile_device_groups/mobile_device_group"
 
     return find_objects_in_containers(groups, search, scopables)
@@ -276,6 +288,7 @@ def create_search_func(obj_method):
         A function that takes one argument of Argparser args, with a
         'search' property to be passed to the obj_method if needed.
     """
+
     def search_func(args):
         """Searches JSS for all objects OR a specific object.
 
@@ -322,15 +335,17 @@ def diff(text1, text2):
     Returns:
         Output from sdiff.
     """
-    output_tuple = list(zip(("/tmp/jss_helper_diff_%s.txt" % num for num in
-                        range(2)), (text1, text2)))
+    output_tuple = list(
+        zip(("/tmp/jss_helper_diff_%s.txt" % num for num in range(2)), (text1, text2))
+    )
     for filename, text in output_tuple:
         write_text_to_file(filename, text)
     # Diff will return 1 if files differ, so we have to catch that
     # error.
     try:
         result = subprocess.check_output(
-            ["sdiff", "-d", output_tuple[0][0], output_tuple[1][0]])
+            ["sdiff", "-d", output_tuple[0][0], output_tuple[1][0]]
+        )
     except subprocess.CalledProcessError as err:
         result = err.output
 
@@ -349,8 +364,11 @@ def build_group_members(obj_search_method, searches):
     Returns:
         List of JSSObjects that match the searches.
     """
-    devices = [device for obj_search in searches for device in
-               search_for_object(obj_search_method, obj_search)]
+    devices = [
+        device
+        for obj_search in searches
+        for device in search_for_object(obj_search_method, obj_search)
+    ]
     return devices
 
 
@@ -401,8 +419,7 @@ def get_updatable_policies(policies, packages):
     updates_available = []
     search = "package_configuration/packages/package/name"
     for policy in policies:
-        packages_installed = [package.text for package in
-                              policy.findall(search)]
+        packages_installed = [package.text for package in policy.findall(search)]
         for package in packages_installed:
             pkg_name, pkg_version = get_package_info(package)
             if pkg_name in multiples:
@@ -414,8 +431,9 @@ def get_updatable_policies(policies, packages):
                     pass
 
     # Make a new list of just names (rather than the full XML)
-    updates_available_names = [policy.findtext("general/name") for policy in
-                               updates_available]
+    updates_available_names = [
+        policy.findtext("general/name") for policy in updates_available
+    ]
 
     return updates_available_names
 
@@ -423,10 +441,15 @@ def get_updatable_policies(policies, packages):
 def log_warning(url, policy):
     """Print warning about flushing the logs if triggers in policy."""
     if policy.findtext("general/frequency") != "Ongoing":
-        triggers = ["trigger_checkin", "trigger_enrollment_complete",
-                    "trigger_login", "trigger_logout",
-                    "trigger_network_state_changed", "trigger_startup",
-                    "trigger_other"]
+        triggers = [
+            "trigger_checkin",
+            "trigger_enrollment_complete",
+            "trigger_login",
+            "trigger_logout",
+            "trigger_network_state_changed",
+            "trigger_startup",
+            "trigger_other",
+        ]
         for trigger in triggers:
             value = policy.findtext("general/" + trigger)
             # Value can be string "false" or "" for "trigger_other".
@@ -455,8 +478,11 @@ def get_newest_pkg(options):
         must be in some format that get_package_info() can extract a
         version number.
     """
-    versions = {get_package_info(package)[1]: package for package
-                in options if get_package_info(package)[1]}
+    versions = {
+        get_package_info(package)[1]: package
+        for package in options
+        if get_package_info(package)[1]
+    }
     if versions:
         newest = max([LooseVersion(version) for version in versions])
         result = versions[str(newest)]
@@ -482,17 +508,17 @@ def _build_package_version_dict(package_list):
         # Convert string version to something we can cmp.
         if package_name:
             if package_name not in package_version_dict:
-                package_version_dict[package_name] = [
-                    LooseVersion(package_version)]
+                package_version_dict[package_name] = [LooseVersion(package_version)]
             else:
-                package_version_dict[package_name].append(
-                    LooseVersion(package_version))
+                package_version_dict[package_name].append(LooseVersion(package_version))
 
     # Narrow down packages list to only products which have multiple
     # packages on the JSS.
-    multiples = {package: package_version_dict[package] for package in
-                 package_version_dict if
-                 len(package_version_dict[package]) > 1}
+    multiples = {
+        package: package_version_dict[package]
+        for package in package_version_dict
+        if len(package_version_dict[package]) > 1
+    }
     return multiples
 
 
@@ -506,9 +532,11 @@ def get_package_info(package_name):
     # of letters, numbers, separated by "-", "_", "."s.
     # Finally, an extension of ".pkg", ".pkg.zip", or ".dmg" must
     # follow.
-    package_regex = (r"^(?P<basename>[\w\s\-]+)[\s\-_]"
-                     r"(?P<version>[\d]+[\w.\-]*)"
-                     r"(?P<extension>\.(pkg(\.zip)?|dmg))$")
+    package_regex = (
+        r"^(?P<basename>[\w\s\-]+)[\s\-_]"
+        r"(?P<version>[\d]+[\w.\-]*)"
+        r"(?P<extension>\.(pkg(\.zip)?|dmg))$"
+    )
     match = re.search(package_regex, package_name)
     if match:
         result = match.group("basename", "version")
@@ -583,8 +611,7 @@ def prompt_user(options, expandable=False, flags=None):
             # allow the "F" option.
             expandable = False
         elif choice == "" and flags and "DEFAULT" in flags:
-            results = [option for option in options if
-                       flags["DEFAULT"](option)]
+            results = [option for option in options if flags["DEFAULT"](option)]
             # If there is a result, use it! Otherwise, just repeat the
             # menu.
             if results:
@@ -618,8 +645,9 @@ def sort_package_list(packages):
         if pkg_name and pkg_string_version:
             # Upper the name for sorting, and convert version to a
             # LooseVersion.
-            package_info.append((package, pkg_name.upper(),
-                                 LooseVersion(pkg_string_version)))
+            package_info.append(
+                (package, pkg_name.upper(), LooseVersion(pkg_string_version))
+            )
 
     # Sort by name, then version.
     package_info.sort(key=itemgetter(1, 2))
@@ -642,8 +670,9 @@ def display_options_list(options):
     # Figure out the number of options, then the length of that number.
     length = len(str(len(options))) + len("\t")
     fmt_string = u"{0[0]:>{length}}: {0[1]}"
-    choices = "\n".join([fmt_string.format(option, length=length) for option in
-                         enumerate(options)])
+    choices = "\n".join(
+        [fmt_string.format(option, length=length) for option in enumerate(options)]
+    )
     print("\n" + choices)
 
 
@@ -669,8 +698,7 @@ def update_name(policy, cur_pkg_name, new_pkg_name):
     cur_pkg_basename, cur_pkg_version = get_package_info(cur_pkg_name)
     new_pkg_basename, new_pkg_version = get_package_info(new_pkg_name)
 
-    changes = [cur_pkg_basename, cur_pkg_version, new_pkg_basename,
-               new_pkg_version]
+    changes = [cur_pkg_basename, cur_pkg_version, new_pkg_basename, new_pkg_version]
     if all(changes):
         name = policy_name_element.text
         new_name = name.replace(cur_pkg_basename, new_pkg_basename)
@@ -709,8 +737,7 @@ def _add_flags_to_list(flags, options):
     if flags:
         # Make a list of matches, then append text to each match.
         for flag in flags:
-            matches = [option for option in flagged_options if
-                       flags[flag](option)]
+            matches = [option for option in flagged_options if flags[flag](option)]
             for match in matches:
                 flagged_options[flagged_options.index(match)] += " (%s)" % flag
     return flagged_options
@@ -724,10 +751,12 @@ def policy_menu(policy_list, package_list):
     Returns:
         String name of selected policy.
     """
-    print ("No policy specified in args: Building a list of policies which "
-           "have newer packages available...")
+    print(
+        "No policy specified in args: Building a list of policies which "
+        "have newer packages available..."
+    )
     # Get full policy XML for all policies.
-    #jss_connection = JSSConnection.get()
+    # jss_connection = JSSConnection.get()
     print("Retrieving %i policies. Please wait..." % len(policy_list))
     all_policies = policy_list.retrieve_all()
 
@@ -735,8 +764,10 @@ def policy_menu(policy_list, package_list):
     # policies which install packages.
     with_updates = get_updatable_policies(all_policies, package_list)
     install_policies = [
-        policy.name for policy in all_policies if
-        int(policy.findtext("package_configuration/packages/size")) > 0]
+        policy.name
+        for policy in all_policies
+        if int(policy.findtext("package_configuration/packages/size")) > 0
+    ]
 
     return prompt_user(with_updates, expandable=install_policies)
 
@@ -759,8 +790,11 @@ def get_pkg_menu(packages, cur_pkg):
     # Build a list of ALL package names.
     full_options = [package.name for package in packages]
     # Build a list of package names with same product name as policy.
-    matching_options = [option for option in full_options if cur_pkg_basename
-                        and cur_pkg_basename.upper() in option.upper()]
+    matching_options = [
+        option
+        for option in full_options
+        if cur_pkg_basename and cur_pkg_basename.upper() in option.upper()
+    ]
 
     # Sort the package lists by name, then version.
     sorted_full_options = sort_package_list(full_options)
@@ -772,5 +806,6 @@ def get_pkg_menu(packages, cur_pkg):
     if default:
         flags["DEFAULT"] = lambda f: default in f
 
-    return prompt_user(sorted_matching_options, expandable=sorted_full_options,
-                       flags=flags)
+    return prompt_user(
+        sorted_matching_options, expandable=sorted_full_options, flags=flags
+    )
