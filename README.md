@@ -1,4 +1,4 @@
-jss_helper
+jss_helper is no longer maintained
 ==========
 
 `jss_helper` is a powerful command-line interface for managing and auditing your Jamf Pro Server.
